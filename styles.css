@@ -573,15 +573,6 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
 .history-text b{ color: var(--ink); }
 .history-text{ color: var(--ink-soft); line-height:1.5; }
 
-.page-footer{
-  text-align:center;
-  margin-top: 26px;
-  display:flex;
-  gap:18px;
-  justify-content:center;
-  flex-wrap:wrap;
-}
-
 @media (prefers-reduced-motion: reduce){
   *{ animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }

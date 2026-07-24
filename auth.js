@@ -1,4 +1,4 @@
-import { SHARED_PASSWORD_HASH } from './config.js?v=2';
+import { SHARED_PASSWORD_HASH } from './config.js?v=3';
 
 const UNLOCK_KEY = 'cafeUnlock_v1';
 
@@ -14,11 +14,6 @@ function readUnlock(){
 
 function writeUnlock(value){
   try{ localStorage.setItem(UNLOCK_KEY, value); }catch(e){ /* modo privado, so esta sessao */ }
-}
-
-export function lock(){
-  try{ localStorage.removeItem(UNLOCK_KEY); }catch(e){ /* nada a limpar */ }
-  location.reload();
 }
 
 function bindReveal(input){
