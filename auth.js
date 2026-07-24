@@ -1,4 +1,4 @@
-import { SHARED_PASSWORD_HASH } from './config.js';
+import { SHARED_PASSWORD_HASH } from './config.js?v=2';
 
 const UNLOCK_KEY = 'cafeUnlock_v1';
 
@@ -21,11 +21,29 @@ export function lock(){
   location.reload();
 }
 
+function bindReveal(input){
+  const btn = document.getElementById('gateReveal');
+  const iconShow = document.getElementById('eyeShow');
+  const iconHide = document.getElementById('eyeHide');
+
+  btn.addEventListener('click', () => {
+    const revealed = input.type === 'text';
+    input.type = revealed ? 'password' : 'text';
+    btn.setAttribute('aria-pressed', String(!revealed));
+    btn.setAttribute('aria-label', revealed ? 'Mostrar palavra-passe' : 'Esconder palavra-passe');
+    iconShow.classList.toggle('hidden', !revealed);
+    iconHide.classList.toggle('hidden', revealed);
+    input.focus();
+  });
+}
+
 export function requireUnlock(){
   const gate = document.getElementById('gate');
   const form = document.getElementById('gateForm');
   const input = document.getElementById('gatePassword');
   const error = document.getElementById('gateError');
+
+  bindReveal(input);
 
   if(readUnlock() === SHARED_PASSWORD_HASH){
     gate.classList.add('hidden');

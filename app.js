@@ -1,5 +1,5 @@
-import { createStore } from './store.js';
-import { requireUnlock, lock } from './auth.js';
+import { createStore } from './store.js?v=2';
+import { requireUnlock, lock } from './auth.js?v=2';
 
 const AVATAR_COLORS = ['#4a3323', '#2f5d50', '#8a4b2b', '#3b5b7a', '#6b3f63', '#7a5c1e', '#455a3f', '#734a4a'];
 const HISTORY_LIMIT = 25;
