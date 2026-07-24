@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<meta name="description" content="Sorteio justo para decidir quem paga o café da equipa.">
+<meta name="theme-color" content="#4a3323">
+<title>Quem Paga o Café</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a3323' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 8h1a4 4 0 0 1 0 8h-1'/%3E%3Cpath d='M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z'/%3E%3Cline x1='6' y1='1' x2='6' y2='4'/%3E%3Cline x1='10' y1='1' x2='10' y2='4'/%3E%3Cline x1='14' y1='1' x2='14' y2='4'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="gate hidden" id="gate">
+  <div class="gate-card">
+    <div class="gate-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <h1>Quem Paga o Café</h1>
+    <p>Página da equipa. Introduz a palavra-passe partilhada para entrar.</p>
+    <form class="gate-form" id="gateForm">
+      <label class="sr-only" for="gatePassword">Palavra-passe</label>
+      <input id="gatePassword" type="password" placeholder="palavra-passe" autocomplete="current-password">
+      <p class="gate-error" id="gateError" role="alert"></p>
+      <button type="submit" class="btn-decide">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<div class="page hidden" id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+          <line x1="6" y1="1" x2="6" y2="4"/>
+          <line x1="10" y1="1" x2="10" y2="4"/>
+          <line x1="14" y1="1" x2="14" y2="4"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Quem Paga o Café</h1>
+        <p>Sorteio justo para a pausa da equipa</p>
+      </div>
+    </div>
+    <div class="topbar-stats">
+      <span class="sync-badge" id="syncBadge" data-mode="local">
+        <span class="sync-dot" aria-hidden="true"></span>
+        <span id="syncText">a ligar…</span>
+      </span>
+      <div class="stat-chip"><strong id="statTeamCount">0</strong><span>na equipa</span></div>
+      <div class="stat-chip"><strong id="statTodayCount">0</strong><span>hoje</span></div>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <section class="card card-team" aria-labelledby="teamHeading">
+      <div class="card-head">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <h2 id="teamHeading">Equipa</h2>
+      </div>
+
+      <div class="add-row">
+        <label class="sr-only" for="nameInput">Nome da nova pessoa</label>
+        <input id="nameInput" type="text" placeholder="nome da pessoa" autocomplete="off" maxlength="30">
+        <button type="button" id="addBtn" class="btn-icon" aria-label="Adicionar pessoa">+</button>
+      </div>
+
+      <ul id="peopleList" class="list"></ul>
+    </section>
+
+    <section class="card card-today" aria-labelledby="todayHeading">
+      <div class="card-head">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <h2 id="todayHeading">Hoje</h2>
+        <div class="card-head-actions">
+          <button id="selAllBtn" class="chip-btn" type="button">todos</button>
+          <button id="selNoneBtn" class="chip-btn" type="button">limpar</button>
+        </div>
+      </div>
+
+      <ul id="selectionList" class="list"></ul>
+
+      <button id="decideBtn" class="btn-decide" disabled>Decidir quem paga</button>
+
+      <div id="resultWrap" class="result-wrap hidden">
+        <div id="decidingState" class="deciding hidden">
+          <span class="spinner" aria-hidden="true"></span> a calcular o rácio mais justo…
+        </div>
+        <div id="resultCard" class="result-card hidden">
+          <div class="avatar avatar-lg" id="winnerAvatar"></div>
+          <div class="result-info">
+            <div class="result-label">paga o café hoje</div>
+            <div class="result-name" id="winnerName"></div>
+            <div class="result-badge">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              decidido
+            </div>
+            <div><button id="undoBtn" class="link-btn" type="button">desfazer</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card card-fair" aria-labelledby="fairHeading">
+      <div class="card-head">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        <h2 id="fairHeading">Ranking de justiça</h2>
+      </div>
+      <p class="card-caption">ordenado pelo rácio pagamentos ÷ idas, do mais baixo (mais provável pagar a seguir) para o mais alto</p>
+      <ul id="fairnessList" class="list"></ul>
+    </section>
+
+    <section class="card card-history" aria-labelledby="historyHeading">
+      <div class="card-head">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+        <h2 id="historyHeading">Histórico</h2>
+      </div>
+      <ul id="historyList" class="list"></ul>
+    </section>
+
+  </main>
+
+  <footer class="page-footer">
+    <button id="lockBtn" class="link-btn muted" type="button">bloquear página</button>
+    <button id="resetBtn" class="link-btn muted" type="button">repor todos os dados</button>
+  </footer>
+
+</div>
+
+<script type="module" src="app.js"></script>
+
+</body>
+</html>
