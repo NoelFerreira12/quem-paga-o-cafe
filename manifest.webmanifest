@@ -1,0 +1,15 @@
+{
+  "name": "Quem Paga o Café",
+  "short_name": "Café",
+  "description": "Quem calha pagar a próxima rodada — justo pelo tamanho da conta.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "pt-PT",
+  "background_color": "#f1ece2",
+  "theme_color": "#4a3323",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,5 +1,5 @@
-import { createStore } from './store.js?v=4';
-import { requireUnlock } from './auth.js?v=4';
+import { createStore } from './store.js?v=5';
+import { requireUnlock } from './auth.js?v=5';
 
 const AVATAR_COLORS = ['#4a3323', '#2f5d50', '#8a4b2b', '#3b5b7a', '#6b3f63', '#7a5c1e', '#455a3f', '#734a4a'];
 const HISTORY_LIMIT = 25;
@@ -76,18 +76,77 @@ function renderPeopleList(){
   state.people.forEach(p => {
     const li = document.createElement('li');
     li.className = 'person-row';
+    li.dataset.id = p.id;
     li.innerHTML = `
       ${avatarHtml(p.name)}
       <span class="person-name">${escapeHtml(p.name)}</span>
       <span class="person-stats">bebeu ${p.idas} &middot; pagou ${p.pago}</span>
-      <button class="remove-btn" data-id="${escapeHtml(p.id)}" aria-label="Remover ${escapeHtml(p.name)}">
+      <button class="row-btn edit-btn" data-id="${escapeHtml(p.id)}" aria-label="Mudar o nome de ${escapeHtml(p.name)}">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+      </button>
+      <button class="row-btn remove-btn" data-id="${escapeHtml(p.id)}" aria-label="Remover ${escapeHtml(p.name)}">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </button>
     `;
     ul.appendChild(li);
   });
+  ul.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => startRename(btn.dataset.id));
+  });
   ul.querySelectorAll('.remove-btn').forEach(btn => {
     btn.addEventListener('click', () => removePerson(btn.dataset.id));
+  });
+}
+
+function startRename(id){
+  const person = state.people.find(p => p.id === id);
+  if(!person) return;
+  const li = $('peopleList').querySelector(`li[data-id="${id}"]`);
+  if(!li) return;
+  const nameEl = li.querySelector('.person-name');
+  if(!nameEl || li.querySelector('.rename-input')) return;
+
+  const input = document.createElement('input');
+  input.className = 'rename-input';
+  input.value = person.name;
+  input.maxLength = 30;
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  let settled = false;
+  const finish = save => {
+    if(settled) return;
+    settled = true;
+    if(save) commitRename(id, input.value);
+    else renderPeopleList();
+  };
+  input.addEventListener('keydown', event => {
+    if(event.key === 'Enter'){ event.preventDefault(); finish(true); }
+    else if(event.key === 'Escape'){ event.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+}
+
+function commitRename(id, rawName){
+  const newName = rawName.trim();
+  const person = state.people.find(p => p.id === id);
+  if(!person || !newName || newName === person.name){ renderPeopleList(); return; }
+  if(state.people.some(p => p.id !== id && p.name.toLowerCase() === newName.toLowerCase())){
+    alert('Já existe alguém com esse nome.');
+    renderPeopleList();
+    return;
+  }
+  store.commit(current => {
+    const target = current.people.find(p => p.id === id);
+    if(!target) return null;
+    const old = target.name;
+    target.name = newName;
+    current.history.forEach(h => {
+      if(h.payer === old) h.payer = newName;
+      h.participants = h.participants.map(n => (n === old ? newName : n));
+    });
+    return { next: current };
   });
 }
 
@@ -135,10 +194,12 @@ function renderFairness(){
     const b = balanceOf(p);
     const tone = b < 0 ? 'debt' : b > 0 ? 'ahead' : 'even';
     const barWidth = Math.round((Math.abs(b) / maxAbs) * 100);
+    const next = idx === 0 ? '<span class="fair-next">próximo</span>' : '';
     li.innerHTML = `
       <span class="fair-rank">${idx + 1}&ordm;</span>
       ${avatarHtml(p.name, 'avatar-sm')}
       <span class="fair-name">${escapeHtml(p.name)}</span>
+      ${next}
       <div class="fair-bar-track"><div class="fair-bar-fill" data-tone="${tone}" style="width:${barWidth}%"></div></div>
       <span class="fair-pct" data-tone="${tone}">${signed(b)}</span>
     `;
@@ -158,12 +219,49 @@ function renderHistory(){
     li.className = 'history-row';
     const outros = h.participants.filter(n => n !== h.payer);
     const outrosTxt = outros.length ? ' com ' + outros.join(', ') : ' sozinho';
+    const undoBtn = h.id
+      ? `<button class="row-btn hist-undo" data-id="${escapeHtml(h.id)}" aria-label="Anular esta ronda">
+           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.6-8.4L3 7"/></svg>
+         </button>`
+      : '';
     li.innerHTML = `
       <span class="history-time">${escapeHtml(h.date)}<br>${escapeHtml(h.time)}</span>
       <span class="history-text"><b>${escapeHtml(h.payer)}</b> pagou,${escapeHtml(outrosTxt)}</span>
+      ${undoBtn}
     `;
     ul.appendChild(li);
   });
+  ul.querySelectorAll('.hist-undo').forEach(btn => {
+    btn.addEventListener('click', () => reverseRound(btn.dataset.id));
+  });
+}
+
+function reverseRound(historyId){
+  const entry = state.history.find(h => h.id === historyId);
+  if(!entry) return;
+  if(!confirm(`Anular esta ronda (${entry.payer} pagou a ${entry.participants.length})? Os contadores voltam atrás.`)) return;
+
+  store.commit(current => {
+    const idx = current.history.findIndex(h => h.id === historyId);
+    if(idx === -1) return null;
+    const h = current.history[idx];
+    const byName = name => current.people.find(p => p.name === name);
+
+    for(const name of h.participants){
+      const p = byName(name);
+      if(!p || p.idas < 1) return null;
+    }
+    const payer = byName(h.payer);
+    if(!payer || payer.pago < h.participants.length || payer.pagamentos < 1) return null;
+
+    h.participants.forEach(name => { byName(name).idas -= 1; });
+    payer.pago -= h.participants.length;
+    payer.pagamentos -= 1;
+    current.history.splice(idx, 1);
+    return { next: current, result: 'ok' };
+  }).then(result => {
+    if(!result) alert('Não dá para anular esta ronda — alguém que participou já foi removido.');
+  }).catch(() => {});
 }
 
 function renderStats(){

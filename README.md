@@ -1,10 +1,19 @@
 # Quem Paga o Café
 
-Sorteio justo para decidir quem paga o café da equipa. Quem tem o rácio `pagamentos ÷ idas`
-mais baixo entre os presentes é sempre o próximo a pagar — desempate pelo número absoluto de
-pagamentos e, só depois, à sorte.
+Decide quem paga o café da equipa de forma justa, tendo em conta o **tamanho da conta** e não
+só quantas vezes cada um pagou.
+
+Cada pessoa tem um **saldo = cafés que pagou − cafés que bebeu**. Quando alguém paga uma
+rodada, ganha crédito igual ao número de presentes (pagar por 8 vale +8, não +1). Quem tiver
+o saldo mais baixo entre os presentes é o próximo a pagar; empate resolve-se por quem menos
+pagou até hoje e, só depois, à sorte.
 
 Site estático, corre em GitHub Pages, sem servidor próprio.
+
+Dá para: adicionar/remover pessoas, **mudar nomes** (reescreve o histórico), escolher quem
+está presente, sortear, **desfazer a última** ou **anular qualquer ronda** do histórico, e ver
+os **números** no fundo. É instalável no telemóvel (menu do browser → adicionar ao ecrã
+inicial).
 
 ---
 
