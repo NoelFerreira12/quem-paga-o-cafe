@@ -1,9 +1,8 @@
-import { createStore } from './store.js?v=3';
-import { requireUnlock } from './auth.js?v=3';
+import { createStore } from './store.js?v=4';
+import { requireUnlock } from './auth.js?v=4';
 
 const AVATAR_COLORS = ['#4a3323', '#2f5d50', '#8a4b2b', '#3b5b7a', '#6b3f63', '#7a5c1e', '#455a3f', '#734a4a'];
 const HISTORY_LIMIT = 25;
-const EPS = 1e-9;
 
 const STATUS_TEXT = {
   cloud: 'sincronizado com a equipa',
@@ -25,13 +24,19 @@ function uid(prefix){
   return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 }
 
-function ratioOf(p){
-  return p.idas === 0 ? 0 : p.pagamentos / p.idas;
+function balanceOf(p){
+  return p.pago - p.idas;
 }
 
-function pct(p){
-  if(p.idas === 0) return '0%';
-  return Math.round((p.pagamentos / p.idas) * 100) + '%';
+function signed(n){
+  return n > 0 ? '+' + n : String(n);
+}
+
+function saldoLabel(p){
+  const b = balanceOf(p);
+  if(b < 0) return 'deve ' + (-b);
+  if(b > 0) return 'à frente ' + b;
+  return 'em dia';
 }
 
 function escapeHtml(str){
@@ -74,7 +79,7 @@ function renderPeopleList(){
     li.innerHTML = `
       ${avatarHtml(p.name)}
       <span class="person-name">${escapeHtml(p.name)}</span>
-      <span class="person-stats">${p.pagamentos}/${p.idas} &middot; ${pct(p)}</span>
+      <span class="person-stats">bebeu ${p.idas} &middot; pagou ${p.pago}</span>
       <button class="remove-btn" data-id="${escapeHtml(p.id)}" aria-label="Remover ${escapeHtml(p.name)}">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </button>
@@ -100,7 +105,7 @@ function renderSelectionList(){
         <input type="checkbox" data-id="${escapeHtml(p.id)}" ${checked} id="chk_${escapeHtml(p.id)}">
         ${avatarHtml(p.name, 'avatar-sm')}
         <label class="sel-name" for="chk_${escapeHtml(p.id)}">${escapeHtml(p.name)}</label>
-        <span class="sel-badge">${pct(p)}</span>
+        <span class="sel-badge" data-tone="${balanceOf(p) < 0 ? 'debt' : balanceOf(p) > 0 ? 'ahead' : 'even'}">${saldoLabel(p)}</span>
       `;
       ul.appendChild(li);
     });
@@ -119,20 +124,23 @@ function renderFairness(){
     return;
   }
   const sorted = [...state.people].sort((a, b) => {
-    const diff = ratioOf(a) - ratioOf(b);
-    if(Math.abs(diff) > EPS) return diff;
-    return a.pagamentos - b.pagamentos;
+    const diff = balanceOf(a) - balanceOf(b);
+    if(diff !== 0) return diff;
+    return a.pago - b.pago;
   });
+  const maxAbs = Math.max(1, ...sorted.map(p => Math.abs(balanceOf(p))));
   sorted.forEach((p, idx) => {
     const li = document.createElement('li');
     li.className = 'fair-row';
-    const barWidth = Math.min(100, Math.round(ratioOf(p) * 100));
+    const b = balanceOf(p);
+    const tone = b < 0 ? 'debt' : b > 0 ? 'ahead' : 'even';
+    const barWidth = Math.round((Math.abs(b) / maxAbs) * 100);
     li.innerHTML = `
       <span class="fair-rank">${idx + 1}&ordm;</span>
       ${avatarHtml(p.name, 'avatar-sm')}
       <span class="fair-name">${escapeHtml(p.name)}</span>
-      <div class="fair-bar-track"><div class="fair-bar-fill" style="width:${barWidth}%"></div></div>
-      <span class="fair-pct">${pct(p)}</span>
+      <div class="fair-bar-track"><div class="fair-bar-fill" data-tone="${tone}" style="width:${barWidth}%"></div></div>
+      <span class="fair-pct" data-tone="${tone}">${signed(b)}</span>
     `;
     ul.appendChild(li);
   });
@@ -163,6 +171,46 @@ function renderStats(){
   $('statTodayCount').textContent = state.selectedIds.length;
 }
 
+function renderSummary(){
+  const ul = $('summaryList');
+  const people = state.people;
+  const rondas = people.reduce((s, p) => s + p.pagamentos, 0);
+  const cafes = people.reduce((s, p) => s + p.idas, 0);
+  const media = rondas === 0 ? '—' : (cafes / rondas).toFixed(1).replace('.', ',');
+
+  const comIdas = people.filter(p => p.idas > 0);
+  const maisEmDivida = comIdas.length
+    ? comIdas.reduce((a, b) => (balanceOf(b) < balanceOf(a) ? b : a))
+    : null;
+  const quemMaisPagou = people.length
+    ? people.reduce((a, b) => (b.pago > a.pago ? b : a))
+    : null;
+
+  const tiles = [
+    { label: 'rondas', value: rondas },
+    { label: 'cafés bebidos', value: cafes },
+    { label: 'média por ronda', value: media },
+    {
+      label: 'mais em dívida',
+      value: maisEmDivida && balanceOf(maisEmDivida) < 0 ? maisEmDivida.name : '—',
+      sub: maisEmDivida && balanceOf(maisEmDivida) < 0 ? saldoLabel(maisEmDivida) : 'ninguém'
+    },
+    {
+      label: 'já pagou mais',
+      value: quemMaisPagou && quemMaisPagou.pago > 0 ? quemMaisPagou.name : '—',
+      sub: quemMaisPagou && quemMaisPagou.pago > 0 ? quemMaisPagou.pago + ' cafés' : 'ninguém'
+    }
+  ];
+
+  ul.innerHTML = tiles.map(t => `
+    <li class="summary-tile">
+      <strong>${escapeHtml(String(t.value))}</strong>
+      <span class="summary-label">${escapeHtml(t.label)}</span>
+      ${t.sub ? `<span class="summary-sub">${escapeHtml(t.sub)}</span>` : ''}
+    </li>
+  `).join('');
+}
+
 function updateDecideButton(){
   $('decideBtn').disabled = !store || state.selectedIds.length === 0 || state.people.length === 0;
 }
@@ -173,6 +221,7 @@ function renderAll(){
   renderFairness();
   renderHistory();
   renderStats();
+  renderSummary();
 }
 
 function setStatus(mode){
@@ -201,7 +250,7 @@ function addPerson(rawName){
   if(!name) return;
   store.commit(current => {
     if(current.people.some(p => p.name.toLowerCase() === name.toLowerCase())) return null;
-    current.people.push({ id: uid('p'), name, idas: 0, pagamentos: 0 });
+    current.people.push({ id: uid('p'), name, idas: 0, pagamentos: 0, pago: 0 });
     return { next: current };
   });
 }
@@ -253,14 +302,15 @@ async function decidePayer(){
     const participants = current.people.filter(p => current.selectedIds.includes(p.id));
     if(participants.length === 0) return null;
 
-    const minRatio = Math.min(...participants.map(ratioOf));
-    const tier1 = participants.filter(p => Math.abs(ratioOf(p) - minRatio) < EPS);
-    const minPag = Math.min(...tier1.map(p => p.pagamentos));
-    const tier2 = tier1.filter(p => p.pagamentos === minPag);
+    const minBalance = Math.min(...participants.map(balanceOf));
+    const tier1 = participants.filter(p => balanceOf(p) === minBalance);
+    const minPago = Math.min(...tier1.map(p => p.pago));
+    const tier2 = tier1.filter(p => p.pago === minPago);
     const chosen = tier2[Math.floor(Math.random() * tier2.length)];
 
     participants.forEach(p => { p.idas += 1; });
     chosen.pagamentos += 1;
+    chosen.pago += participants.length;
 
     const now = new Date();
     current.history.unshift({

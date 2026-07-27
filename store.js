@@ -1,4 +1,4 @@
-import { firebaseConfig, FIRESTORE_COLLECTION, FIRESTORE_DOC, SEED_STATE } from './config.js?v=3';
+import { firebaseConfig, FIRESTORE_COLLECTION, FIRESTORE_DOC, SEED_STATE } from './config.js?v=4';
 
 const LOCAL_KEY = 'cafeLedger_v2';
 const FIREBASE_VERSION = '10.12.2';
@@ -10,26 +10,42 @@ function clone(value){
 function normalize(raw){
   const base = { people: [], selectedIds: [], history: [] };
   if(!raw || typeof raw !== 'object') return base;
+
+  const history = Array.isArray(raw.history)
+    ? raw.history.filter(h => h && typeof h.payer === 'string').map(h => ({
+        id: h.id ? String(h.id) : null,
+        date: String(h.date || ''),
+        time: String(h.time || ''),
+        payer: h.payer,
+        participants: Array.isArray(h.participants) ? h.participants.map(String) : []
+      }))
+    : [];
+
+  const pagoFromHistory = {};
+  history.forEach(h => {
+    pagoFromHistory[h.payer] = (pagoFromHistory[h.payer] || 0) + h.participants.length;
+  });
+
   return {
     people: Array.isArray(raw.people)
       ? raw.people
           .filter(p => p && typeof p.name === 'string')
-          .map(p => ({
-            id: String(p.id || ''),
-            name: p.name,
-            idas: Number(p.idas) || 0,
-            pagamentos: Number(p.pagamentos) || 0
-          }))
+          .map(p => {
+            const pagamentos = Number(p.pagamentos) || 0;
+            const pago = (p.pago === undefined || p.pago === null)
+              ? Math.max(pagoFromHistory[p.name] || 0, pagamentos)
+              : Number(p.pago) || 0;
+            return {
+              id: String(p.id || ''),
+              name: p.name,
+              idas: Number(p.idas) || 0,
+              pagamentos,
+              pago
+            };
+          })
       : [],
     selectedIds: Array.isArray(raw.selectedIds) ? raw.selectedIds.map(String) : [],
-    history: Array.isArray(raw.history)
-      ? raw.history.filter(h => h && typeof h.payer === 'string').map(h => ({
-          date: String(h.date || ''),
-          time: String(h.time || ''),
-          payer: h.payer,
-          participants: Array.isArray(h.participants) ? h.participants.map(String) : []
-        }))
-      : []
+    history
   };
 }
 

@@ -14,12 +14,12 @@ export const FIRESTORE_DOC = 'ledger';
 
 export const SEED_STATE = {
   people: [
-    { id: 'p_noel',    name: 'NOEL',    idas: 5, pagamentos: 1 },
-    { id: 'p_hugo',    name: 'HUGO',    idas: 5, pagamentos: 1 },
-    { id: 'p_jorge',   name: 'JORGE',   idas: 5, pagamentos: 0 },
-    { id: 'p_ruben',   name: 'RUBEN',   idas: 5, pagamentos: 1 },
-    { id: 'p_almeida', name: 'ALMEIDA', idas: 5, pagamentos: 1 },
-    { id: 'p_andre',   name: 'ANDRE',   idas: 5, pagamentos: 1 }
+    { id: 'p_noel',    name: 'NOEL',    idas: 5, pagamentos: 1, pago: 6 },
+    { id: 'p_hugo',    name: 'HUGO',    idas: 5, pagamentos: 1, pago: 6 },
+    { id: 'p_jorge',   name: 'JORGE',   idas: 5, pagamentos: 0, pago: 0 },
+    { id: 'p_ruben',   name: 'RUBEN',   idas: 5, pagamentos: 1, pago: 6 },
+    { id: 'p_almeida', name: 'ALMEIDA', idas: 5, pagamentos: 1, pago: 6 },
+    { id: 'p_andre',   name: 'ANDRE',   idas: 5, pagamentos: 1, pago: 6 }
   ],
   selectedIds: [],
   history: [
