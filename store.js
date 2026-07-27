@@ -1,4 +1,4 @@
-import { firebaseConfig, FIRESTORE_COLLECTION, FIRESTORE_DOC, SEED_STATE } from './config.js?v=5';
+import { firebaseConfig, FIRESTORE_COLLECTION, FIRESTORE_DOC, SEED_STATE } from './config.js?v=6';
 
 const LOCAL_KEY = 'cafeLedger_v2';
 const FIREBASE_VERSION = '10.12.2';
@@ -7,18 +7,30 @@ function clone(value){
   return JSON.parse(JSON.stringify(value));
 }
 
+function legacyId(date, time, payer, participants){
+  const key = [date, time, payer, participants.join(',')].join('|');
+  let hash = 0;
+  for(let i = 0; i < key.length; i++){ hash = (hash * 31 + key.charCodeAt(i)) & 0xffffffff; }
+  return 'hl_' + Math.abs(hash).toString(36);
+}
+
 function normalize(raw){
   const base = { people: [], selectedIds: [], history: [] };
   if(!raw || typeof raw !== 'object') return base;
 
   const history = Array.isArray(raw.history)
-    ? raw.history.filter(h => h && typeof h.payer === 'string').map(h => ({
-        id: h.id ? String(h.id) : null,
-        date: String(h.date || ''),
-        time: String(h.time || ''),
-        payer: h.payer,
-        participants: Array.isArray(h.participants) ? h.participants.map(String) : []
-      }))
+    ? raw.history.filter(h => h && typeof h.payer === 'string').map(h => {
+        const date = String(h.date || '');
+        const time = String(h.time || '');
+        const participants = Array.isArray(h.participants) ? h.participants.map(String) : [];
+        return {
+          id: h.id ? String(h.id) : legacyId(date, time, h.payer, participants),
+          date,
+          time,
+          payer: h.payer,
+          participants
+        };
+      })
     : [];
 
   const pagoFromHistory = {};
@@ -53,9 +65,9 @@ function createLocalStore({ onState, onStatus }){
   let state;
   try{
     state = normalize(JSON.parse(localStorage.getItem(LOCAL_KEY)));
-    if(state.people.length === 0 && state.history.length === 0) state = clone(SEED_STATE);
+    if(state.people.length === 0 && state.history.length === 0) state = normalize(SEED_STATE);
   }catch(e){
-    state = clone(SEED_STATE);
+    state = normalize(SEED_STATE);
   }
 
   let persistent = true;

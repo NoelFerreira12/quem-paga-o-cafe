@@ -1,5 +1,5 @@
-import { createStore } from './store.js?v=5';
-import { requireUnlock } from './auth.js?v=5';
+import { createStore } from './store.js?v=6';
+import { requireUnlock } from './auth.js?v=6';
 
 const AVATAR_COLORS = ['#4a3323', '#2f5d50', '#8a4b2b', '#3b5b7a', '#6b3f63', '#7a5c1e', '#455a3f', '#734a4a'];
 const HISTORY_LIMIT = 25;
@@ -13,6 +13,7 @@ const STATUS_TEXT = {
 
 let store = null;
 let state = { people: [], selectedIds: [], history: [] };
+let editDraft = null;
 let undoSnapshot = null;
 let lastHistoryId = null;
 let selfDecisionId = null;
@@ -77,10 +78,14 @@ function renderPeopleList(){
     const li = document.createElement('li');
     li.className = 'person-row';
     li.dataset.id = p.id;
+    const saldo = balanceOf(p);
+    const tone = saldo < 0 ? 'debt' : saldo > 0 ? 'ahead' : 'even';
     li.innerHTML = `
       ${avatarHtml(p.name)}
-      <span class="person-name">${escapeHtml(p.name)}</span>
-      <span class="person-stats">bebeu ${p.idas} &middot; pagou ${p.pago}</span>
+      <div class="person-main">
+        <span class="person-name">${escapeHtml(p.name)}</span>
+        <span class="person-stats">bebeu ${p.idas} &middot; pagou ${p.pago} &middot; <span class="person-saldo" data-tone="${tone}">${saldoLabel(p)}</span></span>
+      </div>
       <button class="row-btn edit-btn" data-id="${escapeHtml(p.id)}" aria-label="Mudar o nome de ${escapeHtml(p.name)}">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
       </button>
@@ -216,24 +221,138 @@ function renderHistory(){
   }
   state.history.forEach(h => {
     const li = document.createElement('li');
-    li.className = 'history-row';
-    const outros = h.participants.filter(n => n !== h.payer);
-    const outrosTxt = outros.length ? ' com ' + outros.join(', ') : ' sozinho';
-    const undoBtn = h.id
-      ? `<button class="row-btn hist-undo" data-id="${escapeHtml(h.id)}" aria-label="Anular esta ronda">
-           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.6-8.4L3 7"/></svg>
-         </button>`
-      : '';
-    li.innerHTML = `
-      <span class="history-time">${escapeHtml(h.date)}<br>${escapeHtml(h.time)}</span>
-      <span class="history-text"><b>${escapeHtml(h.payer)}</b> pagou,${escapeHtml(outrosTxt)}</span>
-      ${undoBtn}
-    `;
+    if(editDraft && editDraft.id === h.id){
+      li.className = 'history-edit';
+      li.innerHTML = roundEditorHtml(h);
+    } else {
+      li.className = 'history-row';
+      const outros = h.participants.filter(n => n !== h.payer);
+      const outrosTxt = outros.length ? ' com ' + outros.join(', ') : ' sozinho';
+      li.innerHTML = `
+        <span class="history-time">${escapeHtml(h.date)}<br>${escapeHtml(h.time)}</span>
+        <span class="history-text"><b>${escapeHtml(h.payer)}</b> pagou,${escapeHtml(outrosTxt)}</span>
+        <span class="hist-actions">
+          <button class="row-btn hist-edit" data-id="${escapeHtml(h.id)}" aria-label="Editar quem foi nesta ronda">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          </button>
+          <button class="row-btn hist-undo" data-id="${escapeHtml(h.id)}" aria-label="Anular esta ronda">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.6-8.4L3 7"/></svg>
+          </button>
+        </span>
+      `;
+    }
     ul.appendChild(li);
+  });
+  ul.querySelectorAll('.hist-edit').forEach(btn => {
+    btn.addEventListener('click', () => startRoundEdit(btn.dataset.id));
   });
   ul.querySelectorAll('.hist-undo').forEach(btn => {
     btn.addEventListener('click', () => reverseRound(btn.dataset.id));
   });
+  if(editDraft) wireRoundEditor(ul);
+}
+
+function roundEditorHtml(h){
+  const rows = state.people.map(p => {
+    const checked = editDraft.participants.includes(p.name) ? 'checked' : '';
+    return `
+      <label class="re-person">
+        <input type="checkbox" class="re-check" data-name="${escapeHtml(p.name)}" ${checked}>
+        ${avatarHtml(p.name, 'avatar-sm')}
+        <span class="re-name">${escapeHtml(p.name)}</span>
+      </label>`;
+  }).join('');
+  const payerOpts = editDraft.participants.length
+    ? editDraft.participants.map(n => `<option value="${escapeHtml(n)}" ${n === editDraft.payer ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('')
+    : '<option value="">—</option>';
+  return `
+    <div class="re-head">quem foi neste café <span class="re-when">${escapeHtml(h.date)} ${escapeHtml(h.time)}</span></div>
+    <div class="re-people">${rows}</div>
+    <div class="re-payer">
+      <span class="re-payer-label">quem pagou</span>
+      <select class="re-payer-sel">${payerOpts}</select>
+    </div>
+    <div class="re-actions">
+      <button class="chip-btn re-cancel" type="button">cancelar</button>
+      <button class="chip-btn re-save" type="button">guardar</button>
+    </div>
+  `;
+}
+
+function wireRoundEditor(ul){
+  const box = ul.querySelector('.history-edit');
+  if(!box) return;
+  box.querySelectorAll('.re-check').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const name = chk.dataset.name;
+      if(chk.checked){
+        if(!editDraft.participants.includes(name)) editDraft.participants.push(name);
+        if(!editDraft.payer) editDraft.payer = name;
+      } else {
+        editDraft.participants = editDraft.participants.filter(n => n !== name);
+        if(editDraft.payer === name) editDraft.payer = editDraft.participants[0] || '';
+      }
+      renderHistory();
+    });
+  });
+  const sel = box.querySelector('.re-payer-sel');
+  if(sel) sel.addEventListener('change', () => { editDraft.payer = sel.value; });
+  box.querySelector('.re-cancel').addEventListener('click', () => { editDraft = null; renderHistory(); });
+  box.querySelector('.re-save').addEventListener('click', saveRoundEdit);
+}
+
+function startRoundEdit(historyId){
+  const h = state.history.find(x => x.id === historyId);
+  if(!h) return;
+  const names = state.people.map(p => p.name);
+  const participants = h.participants.filter(n => names.includes(n));
+  editDraft = {
+    id: historyId,
+    participants,
+    payer: names.includes(h.payer) ? h.payer : (participants[0] || '')
+  };
+  renderHistory();
+}
+
+function saveRoundEdit(){
+  if(!editDraft) return;
+  const { id } = editDraft;
+  const newParts = [...editDraft.participants];
+  const newPayer = editDraft.payer;
+  if(newParts.length === 0){ alert('Escolhe pelo menos uma pessoa.'); return; }
+  if(!newParts.includes(newPayer)){ alert('Escolhe quem pagou.'); return; }
+  editDraft = null;
+
+  store.commit(current => {
+    const h = current.history.find(x => x.id === id);
+    if(!h) return null;
+    const byName = name => current.people.find(p => p.name === name);
+
+    for(const name of h.participants){
+      const p = byName(name);
+      if(!p || p.idas < 1) return null;
+    }
+    const oldPayer = byName(h.payer);
+    if(!oldPayer || oldPayer.pago < h.participants.length || oldPayer.pagamentos < 1) return null;
+    for(const name of newParts){ if(!byName(name)) return null; }
+    const newPayerP = byName(newPayer);
+    if(!newPayerP) return null;
+
+    h.participants.forEach(name => { byName(name).idas -= 1; });
+    oldPayer.pago -= h.participants.length;
+    oldPayer.pagamentos -= 1;
+
+    newParts.forEach(name => { byName(name).idas += 1; });
+    newPayerP.pago += newParts.length;
+    newPayerP.pagamentos += 1;
+
+    h.payer = newPayer;
+    h.participants = newParts;
+    return { next: current, result: 'ok' };
+  }).then(result => {
+    if(!result) alert('Não dá para editar esta ronda — alguém que participou já foi removido.');
+    renderHistory();
+  }).catch(() => {});
 }
 
 function reverseRound(historyId){
