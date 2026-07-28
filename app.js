@@ -1,5 +1,5 @@
-import { createStore } from './store.js?v=9';
-import { requireUnlock } from './auth.js?v=9';
+import { createStore } from './store.js?v=10';
+import { requireUnlock } from './auth.js?v=10';
 
 const AVATAR_COLORS = ['#4a3323', '#2f5d50', '#8a4b2b', '#3b5b7a', '#6b3f63', '#7a5c1e', '#455a3f', '#734a4a'];
 const HISTORY_LIMIT = 25;
@@ -12,7 +12,7 @@ const STATUS_TEXT = {
 };
 
 let store = null;
-let state = { luck: 30, people: [], selectedIds: [], history: [] };
+let state = { luck: 20, people: [], selectedIds: [], history: [] };
 let editDraft = null;
 let undoSnapshot = null;
 let lastHistoryId = null;
@@ -188,14 +188,24 @@ function renderSelectionList(){
   if(state.people.length === 0){
     ul.innerHTML = emptyStateHtml('adiciona pessoas a equipa primeiro');
   } else {
+    const selected = state.people.filter(p => state.selectedIds.includes(p.id));
+    const weights = chanceWeights(selected, state.luck);
+    const chanceById = {};
+    selected.forEach((p, i) => { chanceById[p.id] = Math.round(weights[i] * 100); });
+
     state.people.forEach(p => {
       const li = document.createElement('li');
       li.className = 'sel-row';
-      const checked = state.selectedIds.includes(p.id) ? 'checked' : '';
+      const isSel = state.selectedIds.includes(p.id);
+      const checked = isSel ? 'checked' : '';
+      const chance = isSel
+        ? `<span class="sel-chance" title="hipótese de pagar">${chanceById[p.id]}%</span>`
+        : '';
       li.innerHTML = `
         <input type="checkbox" data-id="${escapeHtml(p.id)}" ${checked} id="chk_${escapeHtml(p.id)}">
         ${avatarHtml(p.name, 'avatar-sm')}
         <label class="sel-name" for="chk_${escapeHtml(p.id)}">${escapeHtml(p.name)}</label>
+        ${chance}
         <span class="sel-badge" data-tone="${balanceOf(p) < 0 ? 'debt' : balanceOf(p) > 0 ? 'ahead' : 'even'}">${saldoLabel(p)}</span>
       `;
       ul.appendChild(li);
@@ -548,8 +558,10 @@ async function decidePayer(){
   selfDecisionId = decisionId;
   undoSnapshot = store.getState();
 
+  const style = getAnimStyle();
   $('decideBtn').disabled = true;
-  openRoulette(selectedPeople);
+  if(style === 'wheel') openWheel(selectedPeople);
+  else openRoulette(selectedPeople);
 
   const winnerName = await store.commit(current => {
     const participants = current.people.filter(p => current.selectedIds.includes(p.id));
@@ -580,16 +592,17 @@ async function decidePayer(){
   updateDecideButton();
 
   if(!winnerName){
-    closeRoulette();
+    hideAnimations();
     hideResult();
     undoSnapshot = null;
     return;
   }
 
   const winner = selectedPeople.find(p => p.name === winnerName) || { name: winnerName };
-  await spinRoulette(selectedPeople, winner);
-  await wait(500);
-  closeRoulette();
+  if(style === 'wheel') await spinWheel(selectedPeople, winner);
+  else await spinRoulette(selectedPeople, winner);
+  await wait(600);
+  hideAnimations();
   showResultCard(winnerName);
 }
 
@@ -650,6 +663,102 @@ function closeRoulette(){
   $('roulette').classList.add('hidden');
 }
 
+const ANIM_KEY = 'cafeAnim_v1';
+
+function getAnimStyle(){
+  try{ return localStorage.getItem(ANIM_KEY) === 'wheel' ? 'wheel' : 'reel'; }
+  catch(e){ return 'reel'; }
+}
+
+function setAnimStyle(style){
+  try{ localStorage.setItem(ANIM_KEY, style); }catch(e){ /* modo privado */ }
+  renderAnimToggle();
+}
+
+function renderAnimToggle(){
+  const current = getAnimStyle();
+  document.querySelectorAll('.anim-opt').forEach(btn => {
+    btn.setAttribute('aria-pressed', String(btn.dataset.style === current));
+  });
+}
+
+function polar(cx, cy, r, deg){
+  const rad = (deg - 90) * Math.PI / 180;
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+
+function buildWheel(parts){
+  const g = $('wheelSpin');
+  g.style.transition = 'none';
+  g.style.transform = 'rotate(0deg)';
+  const probs = chanceWeights(parts, state.luck);
+  const cx = 100, cy = 100, R = 96, rLabel = 62;
+  let angle = 0;
+  let markup = '';
+  const segs = [];
+  parts.forEach((p, i) => {
+    const span = probs[i] * 360;
+    const a0 = angle, a1 = angle + span;
+    angle = a1;
+    if(parts.length === 1){
+      markup += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="${colorForName(p.name)}"/>`;
+    } else {
+      const [x0, y0] = polar(cx, cy, R, a0);
+      const [x1, y1] = polar(cx, cy, R, a1);
+      const large = (a1 - a0) > 180 ? 1 : 0;
+      markup += `<path d="M${cx} ${cy} L${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z" fill="${colorForName(p.name)}" stroke="#fff" stroke-width="1.2"/>`;
+    }
+    const mid = (a0 + a1) / 2;
+    const [lx, ly] = polar(cx, cy, rLabel, mid);
+    markup += `<text x="${lx.toFixed(2)}" y="${ly.toFixed(2)}" fill="#fff" font-size="11" font-weight="700" text-anchor="middle" dominant-baseline="central">${escapeHtml(initialsFor(p.name))}</text>`;
+    segs.push({ name: p.name, mid, span });
+  });
+  g.innerHTML = markup;
+  void g.getBoundingClientRect();
+  return segs;
+}
+
+function openWheel(parts){
+  $('resultWrap').classList.remove('hidden');
+  $('resultCard').classList.add('hidden');
+  $('roulette').classList.add('hidden');
+  $('wheel').classList.remove('hidden');
+  buildWheel(parts);
+}
+
+function spinWheel(parts, winner){
+  const segs = buildWheel(parts);
+  const seg = segs.find(s => s.name === winner.name) || segs[0];
+  const g = $('wheelSpin');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const turns = reduce ? 1 : 6;
+  const jitter = (Math.random() * 0.6 - 0.3) * seg.span;
+  const target = turns * 360 + (360 - (seg.mid + jitter));
+
+  g.style.transition = 'none';
+  g.style.transform = 'rotate(0deg)';
+  void g.getBoundingClientRect();
+  const dur = reduce ? 350 : 4200;
+  g.style.transition = `transform ${dur}ms cubic-bezier(0.13, 0.72, 0.10, 1)`;
+  g.style.transform = `rotate(${target}deg)`;
+
+  return new Promise(resolve => {
+    let done = false;
+    const finish = () => { if(done) return; done = true; g.removeEventListener('transitionend', finish); resolve(); };
+    g.addEventListener('transitionend', finish);
+    setTimeout(finish, dur + 250);
+  });
+}
+
+function closeWheel(){
+  $('wheel').classList.add('hidden');
+}
+
+function hideAnimations(){
+  closeRoulette();
+  closeWheel();
+}
+
 function undoLast(){
   if(!undoSnapshot) return;
   const snapshot = undoSnapshot;
@@ -661,7 +770,7 @@ function undoLast(){
 
 function showResultCard(payerName){
   $('resultWrap').classList.remove('hidden');
-  closeRoulette();
+  hideAnimations();
   $('winnerAvatar').style.background = colorForName(payerName);
   $('winnerAvatar').textContent = initialsFor(payerName);
   $('winnerName').textContent = payerName;
@@ -692,15 +801,23 @@ function bindEvents(){
   $('selNoneBtn').addEventListener('click', selectNone);
   $('decideBtn').addEventListener('click', decidePayer);
   $('undoBtn').addEventListener('click', undoLast);
-  $('luckRange').addEventListener('input', () => { $('luckVal').textContent = $('luckRange').value + '%'; });
+  $('luckRange').addEventListener('input', () => {
+    state.luck = Number($('luckRange').value);
+    $('luckVal').textContent = state.luck + '%';
+    renderSelectionList();
+  });
   $('luckRange').addEventListener('change', () => {
     const value = Number($('luckRange').value);
     store.commit(current => { current.luck = value; return { next: current }; });
+  });
+  document.querySelectorAll('.anim-opt').forEach(btn => {
+    btn.addEventListener('click', () => setAnimStyle(btn.dataset.style));
   });
 }
 
 async function main(){
   bindEvents();
+  renderAnimToggle();
   await requireUnlock();
   $('app').classList.remove('hidden');
   store = await createStore({ onState: applyState, onStatus: setStatus });

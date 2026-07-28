@@ -1,4 +1,4 @@
-import { firebaseConfig, FIRESTORE_COLLECTION, FIRESTORE_DOC, SEED_STATE } from './config.js?v=9';
+import { firebaseConfig, FIRESTORE_COLLECTION, FIRESTORE_DOC, SEED_STATE } from './config.js?v=10';
 
 const LOCAL_KEY = 'cafeLedger_v2';
 const FIREBASE_VERSION = '10.12.2';
@@ -14,8 +14,19 @@ function legacyId(date, time, payer, participants){
   return 'hl_' + Math.abs(hash).toString(36);
 }
 
+const LUCK_MIN = 10;
+const LUCK_MAX = 30;
+const LUCK_DEFAULT = 20;
+
+function clampLuck(value){
+  if(value === undefined || value === null) return LUCK_DEFAULT;
+  const n = Math.round(Number(value));
+  if(!Number.isFinite(n)) return LUCK_DEFAULT;
+  return Math.min(LUCK_MAX, Math.max(LUCK_MIN, n));
+}
+
 function normalize(raw){
-  const base = { luck: 30, people: [], selectedIds: [], history: [] };
+  const base = { luck: LUCK_DEFAULT, people: [], selectedIds: [], history: [] };
   if(!raw || typeof raw !== 'object') return base;
 
   const history = Array.isArray(raw.history)
@@ -38,12 +49,8 @@ function normalize(raw){
     pagoFromHistory[h.payer] = (pagoFromHistory[h.payer] || 0) + h.participants.length;
   });
 
-  const luck = (raw.luck === undefined || raw.luck === null)
-    ? 30
-    : Math.min(100, Math.max(0, Math.round(Number(raw.luck) || 0)));
-
   return {
-    luck,
+    luck: clampLuck(raw.luck),
     people: Array.isArray(raw.people)
       ? raw.people
           .filter(p => p && typeof p.name === 'string')

@@ -13,7 +13,7 @@ export const FIRESTORE_COLLECTION = 'cafe';
 export const FIRESTORE_DOC = 'ledger';
 
 export const SEED_STATE = {
-  luck: 30,
+  luck: 20,
   people: [
     { id: 'p_noel',    name: 'NOEL',    idas: 5, pagamentos: 1, pago: 6 },
     { id: 'p_hugo',    name: 'HUGO',    idas: 5, pagamentos: 1, pago: 6 },
