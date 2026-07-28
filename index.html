@@ -10,13 +10,13 @@
 <meta property="og:description" content="Quem calha pagar a próxima rodada — justo pelo tamanho da conta.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
-<link rel="manifest" href="manifest.webmanifest?v=8">
+<link rel="manifest" href="manifest.webmanifest?v=9">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a3323' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 8h1a4 4 0 0 1 0 8h-1'/%3E%3Cpath d='M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z'/%3E%3Cline x1='6' y1='1' x2='6' y2='4'/%3E%3Cline x1='10' y1='1' x2='10' y2='4'/%3E%3Cline x1='14' y1='1' x2='14' y2='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=8">
+<link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
 
@@ -101,11 +101,20 @@
 
       <ul id="selectionList" class="list"></ul>
 
+      <div class="luck-row">
+        <label for="luckRange">sorte <span id="luckVal">30%</span></label>
+        <input type="range" id="luckRange" min="0" max="100" step="5" value="30">
+      </div>
+      <p class="luck-caption">0% = decide pela justiça · 100% = pura sorte</p>
+
       <button id="decideBtn" class="btn-decide" disabled>Bora, quem paga?</button>
 
       <div id="resultWrap" class="result-wrap hidden">
-        <div id="decidingState" class="deciding hidden">
-          <span class="spinner" aria-hidden="true"></span> a ver a quem calha…
+        <div id="roulette" class="roulette hidden" aria-hidden="true">
+          <div class="roulette-viewport">
+            <div class="roulette-track" id="rouletteTrack"></div>
+          </div>
+          <div class="roulette-marker" aria-hidden="true"></div>
         </div>
         <div id="resultCard" class="result-card hidden">
           <div class="avatar avatar-lg" id="winnerAvatar"></div>
@@ -151,7 +160,7 @@
 
 </div>
 
-<script type="module" src="app.js?v=8"></script>
+<script type="module" src="app.js?v=9"></script>
 
 </body>
 </html>

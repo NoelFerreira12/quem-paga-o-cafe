@@ -1,4 +1,4 @@
-import { firebaseConfig, FIRESTORE_COLLECTION, FIRESTORE_DOC, SEED_STATE } from './config.js?v=8';
+import { firebaseConfig, FIRESTORE_COLLECTION, FIRESTORE_DOC, SEED_STATE } from './config.js?v=9';
 
 const LOCAL_KEY = 'cafeLedger_v2';
 const FIREBASE_VERSION = '10.12.2';
@@ -15,7 +15,7 @@ function legacyId(date, time, payer, participants){
 }
 
 function normalize(raw){
-  const base = { people: [], selectedIds: [], history: [] };
+  const base = { luck: 30, people: [], selectedIds: [], history: [] };
   if(!raw || typeof raw !== 'object') return base;
 
   const history = Array.isArray(raw.history)
@@ -38,7 +38,12 @@ function normalize(raw){
     pagoFromHistory[h.payer] = (pagoFromHistory[h.payer] || 0) + h.participants.length;
   });
 
+  const luck = (raw.luck === undefined || raw.luck === null)
+    ? 30
+    : Math.min(100, Math.max(0, Math.round(Number(raw.luck) || 0)));
+
   return {
+    luck,
     people: Array.isArray(raw.people)
       ? raw.people
           .filter(p => p && typeof p.name === 'string')

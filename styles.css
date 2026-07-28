@@ -478,6 +478,82 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
   cursor:not-allowed;
 }
 
+.luck-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-top: 14px;
+}
+.luck-row label{
+  display:flex;
+  gap:6px;
+  align-items:baseline;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  white-space:nowrap;
+}
+#luckVal{ font-family: var(--font-mono); font-weight:600; color: var(--accent); }
+#luckRange{
+  flex:1;
+  min-width:0;
+  height: 4px;
+  accent-color: var(--primary);
+  cursor:pointer;
+}
+.luck-caption{
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin: 6px 0 2px;
+}
+
+.roulette{ position:relative; margin-bottom: 16px; }
+.roulette-viewport{
+  overflow:hidden;
+  height: 92px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--canvas);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.roulette-track{
+  display:flex;
+  height:100%;
+  will-change: transform;
+}
+.roulette-card{
+  flex: 0 0 96px;
+  width: 96px;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap: 7px;
+  border-right: 1px solid var(--border);
+}
+.roulette-card-name{
+  font-size: 11px;
+  font-weight:600;
+  max-width: 88px;
+  text-align:center;
+  line-height:1.15;
+  overflow-wrap:anywhere;
+}
+.roulette-card.win{ background: var(--accent-soft); }
+.roulette-marker{
+  position:absolute;
+  top: -5px;
+  bottom: -5px;
+  left: 50%;
+  width: 3px;
+  background: var(--accent);
+  transform: translateX(-50%);
+  border-radius: 2px;
+  box-shadow: 0 0 0 3px rgba(184,134,59,0.18);
+  pointer-events:none;
+}
+
 .result-wrap{ margin-top:16px; }
 
 .deciding{

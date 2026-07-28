@@ -1,4 +1,4 @@
-import { SHARED_PASSWORD_HASH } from './config.js?v=8';
+import { SHARED_PASSWORD_HASH } from './config.js?v=9';
 
 const UNLOCK_KEY = 'cafeUnlock_v1';
 
