@@ -10,13 +10,13 @@
 <meta property="og:description" content="Quem calha pagar a próxima rodada — justo pelo tamanho da conta.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
-<link rel="manifest" href="manifest.webmanifest?v=10">
+<link rel="manifest" href="manifest.webmanifest?v=11">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a3323' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 8h1a4 4 0 0 1 0 8h-1'/%3E%3Cpath d='M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z'/%3E%3Cline x1='6' y1='1' x2='6' y2='4'/%3E%3Cline x1='10' y1='1' x2='10' y2='4'/%3E%3Cline x1='14' y1='1' x2='14' y2='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=10">
+<link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
 
@@ -121,16 +121,6 @@
       <button id="decideBtn" class="btn-decide" disabled>Bora, quem paga?</button>
 
       <div id="resultWrap" class="result-wrap hidden">
-        <div id="roulette" class="roulette hidden" aria-hidden="true">
-          <div class="roulette-viewport">
-            <div class="roulette-track" id="rouletteTrack"></div>
-          </div>
-          <div class="roulette-marker" aria-hidden="true"></div>
-        </div>
-        <div id="wheel" class="wheel-wrap hidden" aria-hidden="true">
-          <svg class="wheel" viewBox="0 0 200 200"><g id="wheelSpin"></g></svg>
-          <div class="wheel-pointer" aria-hidden="true"></div>
-        </div>
         <div id="resultCard" class="result-card hidden">
           <div class="avatar avatar-lg" id="winnerAvatar"></div>
           <div class="result-info">
@@ -152,6 +142,13 @@
         <h2 id="fairHeading">Quem paga a seguir</h2>
       </div>
       <p class="card-caption">saldo = cafés que já pagou menos os que já bebeu. quem está mais em baixo (mais negativo) é o próximo a pagar.</p>
+      <details class="fair-help">
+        <summary>como é calculada a hipótese de cada um</summary>
+        <p><b>quem pagou a última ronda fica de fora da seguinte</b> — nunca se paga duas vezes seguidas. bebe na mesma, só não entra no sorteio. só volta a entrar se for o único presente.</p>
+        <p>entre os restantes: quem tem o saldo mais alto serve de topo, e o peso de cada um é <b>(saldo do topo − saldo dele) + 1</b>, ou seja quanto mais a dever, mais peso. depois mistura-se esse peso com um sorteio às cegas na medida da barra da <b>sorte</b>: a 20%, 80% da decisão vem do saldo e 20% é puro acaso.</p>
+        <p>por isso ninguém fica com 0% nem com 100%: quem já pagou muito continua a poder calhar, só que raramente. o sorteio é feito uma vez, com estes pesos, e só depois a animação é montada para acabar nesse nome.</p>
+        <p>anular uma ronda apaga-a mesmo: o sorteio seguinte é uma aposta nova, e quem fica de fora passa a ser quem pagou a ronda que sobrou no topo do histórico.</p>
+      </details>
       <ul id="fairnessList" class="list"></ul>
     </section>
 
@@ -175,7 +172,88 @@
 
 </div>
 
-<script type="module" src="app.js?v=10"></script>
+<div class="stage hidden" id="stage" role="dialog" aria-modal="true" aria-labelledby="stageTitle">
+  <div class="stage-veil" id="stageVeil"></div>
+  <div class="stage-rays" aria-hidden="true"></div>
+
+  <div class="stage-panel">
+
+    <div class="stage-top">
+      <p class="stage-eyebrow" id="stageTitle">quem paga o café</p>
+      <div class="stage-top-actions">
+        <button type="button" class="stage-icon" id="soundBtn" aria-pressed="true" aria-label="Desligar som">
+          <svg id="soundOnIcon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+          <svg id="soundOffIcon" class="hidden" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/></svg>
+        </button>
+        <button type="button" class="stage-icon" id="stageClose" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="stage-scene" id="stageScene">
+
+      <div class="crate-scene hidden" id="crateScene" data-phase="idle">
+        <div class="crate">
+          <div class="crate-beam" aria-hidden="true"></div>
+          <div class="crate-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="crate-lid">
+            <span class="crate-lid-strap"></span>
+          </div>
+          <div class="crate-box">
+            <div class="crate-inner"></div>
+            <div class="crate-face">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+              <span class="crate-tag">selada</span>
+            </div>
+          </div>
+          <div class="crate-shadow" aria-hidden="true"></div>
+        </div>
+
+        <div class="reel" id="reel">
+          <div class="reel-viewport">
+            <div class="reel-track" id="reelTrack"></div>
+            <div class="reel-marker" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wheel-scene hidden" id="wheelScene">
+        <div class="wheel-stage">
+          <svg class="wheel-svg" viewBox="0 0 240 240" aria-hidden="true">
+            <circle class="wheel-back" cx="120" cy="120" r="114"/>
+            <g id="wheelSpin"></g>
+            <circle class="wheel-rim" cx="120" cy="120" r="112"/>
+            <circle class="wheel-hub" cx="120" cy="120" r="23"/>
+            <circle class="wheel-hub-dot" cx="120" cy="120" r="7"/>
+          </svg>
+          <div class="wheel-pin" id="wheelPin" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="stage-reveal hidden" id="stageReveal">
+        <div class="reveal-halo" aria-hidden="true"></div>
+        <div class="avatar reveal-avatar" id="revealAvatar"></div>
+        <p class="reveal-kicker">hoje paga</p>
+        <h2 class="reveal-name" id="revealName"></h2>
+        <p class="reveal-meta" id="revealMeta"></p>
+      </div>
+
+    </div>
+
+    <p class="stage-hint" id="stageHint" aria-live="polite"></p>
+
+    <div class="stage-buttons hidden" id="stageButtons">
+      <button type="button" class="stage-btn ghost hidden" id="stageUndo">desfazer</button>
+      <button type="button" class="stage-btn" id="stageDone">boa</button>
+    </div>
+
+  </div>
+
+  <div class="confetti" id="confetti" aria-hidden="true"></div>
+</div>
+
+<script type="module" src="app.js?v=11"></script>
 
 </body>
 </html>

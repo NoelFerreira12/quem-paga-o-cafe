@@ -4,9 +4,9 @@ Decide quem paga o café da equipa de forma justa, tendo em conta o **tamanho da
 só quantas vezes cada um pagou.
 
 Cada pessoa tem um **saldo = cafés que pagou − cafés que bebeu**. Quando alguém paga uma
-rodada, ganha crédito igual ao número de presentes (pagar por 8 vale +8, não +1). Quem tiver
-o saldo mais baixo entre os presentes é o próximo a pagar; empate resolve-se por quem menos
-pagou até hoje e, só depois, à sorte.
+rodada, ganha crédito igual ao número de presentes (pagar por 8 vale +8, não +1). Quem tem o
+saldo mais baixo entre os presentes é o **mais provável** a pagar a seguir — não o escolhido à
+força. O quadro "quem paga a seguir" ordena por saldo; empate desempata por quem menos pagou.
 
 Site estático, corre em GitHub Pages, sem servidor próprio.
 
@@ -14,6 +14,48 @@ Dá para: adicionar/remover pessoas, **mudar nomes** (reescreve o histórico), e
 está presente, sortear, **desfazer a última** ou **anular qualquer ronda** do histórico, e ver
 os **números** no fundo. É instalável no telemóvel (menu do browser → adicionar ao ecrã
 inicial).
+
+---
+
+## Como o sorteio decide
+
+Primeiro corta-se quem pagou a ronda anterior: **ninguém paga duas vezes seguidas**. Essa
+pessoa continua a beber (leva `+1` nas idas), só não entra no sorteio; na lista aparece com
+`fora` em vez da percentagem. A única exceção é ser a única presente — aí paga na mesma.
+
+Entre os que sobram, com `L = sorte/100` (barra de 10% a 30%) e `saldo(p) = pago − idas`:
+
+```text
+topo     = maior saldo entre os elegíveis
+peso(p)  = (topo − saldo(p)) + 1
+hipótese = (1 − L) · peso(p)/Σpeso  +  L · 1/n
+```
+
+Ou seja: uma parte proporcional à dívida, mais uma parte igual para todos. Propriedades:
+
+- entre os elegíveis as hipóteses **somam sempre 100%** e nenhuma é 0 nem 100 — quem já pagou
+  muito continua a poder calhar, só que raramente;
+- o saldo do grupo **soma sempre zero** (uma ronda dá `+n` a quem paga e `−1` a cada presente),
+  portanto ninguém pode "desaparecer" com crédito do nada;
+- **zero repetições** em 200 000 rondas simuladas com 6 pessoas, a 10%, 20% e 30% de sorte, com
+  a diferença entre quem mais e quem menos pagou entre 1 e 3 rondas (~33 333 cada);
+- ao fim de 3000 rondas com 6 pessoas, essa diferença fica em 2 a 4 rondas (~500 cada);
+- com 2 pessoas a regra torna-se alternância estrita (A, B, A, B…); com 1 pessoa presente, paga
+  ela sempre — a exclusão só se aplica enquanto sobrar alguém.
+
+Anular uma ronda repõe o estado inteiro que existia antes dela (contadores e histórico), por
+isso o sorteio seguinte é uma aposta nova com os pesos originais: quem sair pode voltar a ser o
+mesmo nome que foi anulado, e quem fica de fora passa a ser quem pagou a ronda que sobrou no
+topo do histórico.
+
+O nome sai **uma vez**, no momento da gravação, com estes pesos e com `crypto.getRandomValues`.
+A animação é montada **depois**, já a saber o resultado, para acabar nesse nome — as fatias da
+roleta têm o tamanho da hipótese real e o cartão final mostra a percentagem que essa pessoa
+tinha. A animação nunca decide nada.
+
+A percentagem mostrada na lista é calculada com o estado que o teu browser tem nesse instante;
+se outra pessoa registar uma ronda entretanto, o sorteio usa o estado já atualizado (a
+transação lê o documento antes de escrever).
 
 ---
 
@@ -123,7 +165,13 @@ entrado é obrigado a introduzir a nova.
 | [config.js](config.js) | Password, ligação ao Firebase e dados iniciais |
 | [store.js](store.js) | Camada de dados: Firestore ou `localStorage` |
 | [auth.js](auth.js) | Ecrã de entrada |
-| [app.js](app.js) | Regras do sorteio e desenho dos painéis |
+| [app.js](app.js) | Regras do sorteio, palco da animação e desenho dos painéis |
+
+O sorteio abre em ecrã inteiro. Há dois modos, escolhidos no cartão "quem está hoje" e
+guardados no browser (`cafeAnim_v1`): **caixa** (a caixa abana, abre, o feixe sai e a fita
+corre até ao nome) e **roleta** (roda com as fatias do tamanho da hipótese real). O botão do
+altifalante liga/desliga os efeitos (`cafeSound_v1`, WebAudio, sem ficheiros). Com
+`prefers-reduced-motion` a animação é reduzida ao mínimo.
 
 ---
 
