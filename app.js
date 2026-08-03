@@ -1,19 +1,21 @@
-import { createStore } from './store.js?v=11';
-import { requireUnlock } from './auth.js?v=11';
+import { createStore } from './store.js?v=12';
+import { requireUnlock } from './auth.js?v=12';
 
 const AVATAR_COLORS = ['#4a3323', '#2f5d50', '#8a4b2b', '#3b5b7a', '#6b3f63', '#7a5c1e', '#455a3f', '#734a4a'];
 const HISTORY_LIMIT = 25;
 const ANIM_KEY = 'cafeAnim_v1';
 const SOUND_KEY = 'cafeSound_v1';
+const THEME_KEY = 'cafeTheme_v1';
 const SPIN_EASE = [0.13, 0.72, 0.10, 1];
-const SPIN_MS = 5200;
+const SPIN_MS = 5600;
 const SPIN_MS_REDUCED = 320;
+const THEME_COLORS = { light: '#4a3323', dark: '#14100b' };
 
 const STATUS_TEXT = {
   cloud: 'sincronizado com a equipa',
-  local: 'so neste browser',
-  volatile: 'sem guardar (browser bloqueou)',
-  error: 'sem ligacao a nuvem'
+  local: 'só neste browser',
+  volatile: 'sem guardar (o browser bloqueou)',
+  error: 'sem ligação à nuvem'
 };
 
 let store = null;
@@ -28,7 +30,11 @@ let stageToken = 0;
 let stageOpen = false;
 let lastFocus = null;
 let audioCtx = null;
+let audioBus = null;
+let noiseBuffer = null;
+let riser = null;
 let tickTimers = [];
+let modalResolve = null;
 
 const $ = id => document.getElementById(id);
 
@@ -107,6 +113,66 @@ function wait(ms){
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function toast(message, tone){
+  const host = $('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  if(tone) el.dataset.tone = tone;
+  el.textContent = message;
+  host.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 320);
+  }, 3200);
+}
+
+function closeModal(answer){
+  const resolve = modalResolve;
+  modalResolve = null;
+  $('modal').classList.add('hidden');
+  if(resolve) resolve(Boolean(answer));
+}
+
+function askConfirm(message, okLabel){
+  closeModal(false);
+  $('modalText').textContent = message;
+  $('modalOk').textContent = okLabel || 'confirmar';
+  $('modal').classList.remove('hidden');
+  $('modalOk').focus();
+  return new Promise(resolve => { modalResolve = resolve; });
+}
+
+function getTheme(){
+  try{
+    const saved = localStorage.getItem(THEME_KEY);
+    return saved === 'light' || saved === 'dark' ? saved : 'auto';
+  }catch(e){
+    return 'auto';
+  }
+}
+
+function systemDark(){
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function applyTheme(){
+  const theme = getTheme();
+  const root = document.documentElement;
+  if(theme === 'auto') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', theme);
+  const dark = theme === 'dark' || (theme === 'auto' && systemDark());
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', dark ? THEME_COLORS.dark : THEME_COLORS.light);
+  $('themeBtn').setAttribute('aria-label', dark ? 'Mudar para tema claro' : 'Mudar para tema escuro');
+}
+
+function toggleTheme(){
+  const theme = getTheme();
+  const dark = theme === 'auto' ? systemDark() : theme === 'dark';
+  try{ localStorage.setItem(THEME_KEY, dark ? 'light' : 'dark'); }catch(e){ /* modo privado */ }
+  applyTheme();
+}
+
 function signed(n){
   return n > 0 ? '+' + n : String(n);
 }
@@ -149,7 +215,7 @@ function renderPeopleList(){
   const ul = $('peopleList');
   ul.innerHTML = '';
   if(state.people.length === 0){
-    ul.innerHTML = emptyStateHtml('ainda sem ninguem, adiciona a equipa acima');
+    ul.innerHTML = emptyStateHtml('ainda sem ninguém, adiciona a equipa aqui em cima');
     return;
   }
   state.people.forEach(p => {
@@ -216,7 +282,7 @@ function commitRename(id, rawName){
   const person = state.people.find(p => p.id === id);
   if(!person || !newName || newName === person.name){ renderPeopleList(); return; }
   if(state.people.some(p => p.id !== id && p.name.toLowerCase() === newName.toLowerCase())){
-    alert('Já existe alguém com esse nome.');
+    toast('Já existe alguém com esse nome.', 'warn');
     renderPeopleList();
     return;
   }
@@ -237,7 +303,7 @@ function renderSelectionList(){
   const ul = $('selectionList');
   ul.innerHTML = '';
   if(state.people.length === 0){
-    ul.innerHTML = emptyStateHtml('adiciona pessoas a equipa primeiro');
+    ul.innerHTML = emptyStateHtml('adiciona pessoas à equipa primeiro');
   } else {
     const selected = state.people.filter(p => state.selectedIds.includes(p.id));
     const pool = eligiblePool(selected, state.history);
@@ -311,7 +377,7 @@ function renderHistory(){
   const ul = $('historyList');
   ul.innerHTML = '';
   if(state.history.length === 0){
-    ul.innerHTML = emptyStateHtml('ainda sem decisoes registadas');
+    ul.innerHTML = emptyStateHtml('ainda sem decisões registadas');
     return;
   }
   state.history.forEach(h => {
@@ -414,8 +480,8 @@ function saveRoundEdit(){
   const { id } = editDraft;
   const newParts = [...editDraft.participants];
   const newPayer = editDraft.payer;
-  if(newParts.length === 0){ alert('Escolhe pelo menos uma pessoa.'); return; }
-  if(!newParts.includes(newPayer)){ alert('Escolhe quem pagou.'); return; }
+  if(newParts.length === 0){ toast('Escolhe pelo menos uma pessoa.', 'warn'); return; }
+  if(!newParts.includes(newPayer)){ toast('Escolhe quem pagou.', 'warn'); return; }
   editDraft = null;
 
   store.commit(current => {
@@ -445,15 +511,20 @@ function saveRoundEdit(){
     h.participants = newParts;
     return { next: current, result: 'ok' };
   }).then(result => {
-    if(!result) alert('Não dá para editar esta ronda — alguém que participou já foi removido.');
+    if(result) toast('Ronda atualizada.');
+    else toast('Não dá para editar esta ronda — alguém que participou já foi removido.', 'warn');
     renderHistory();
   }).catch(() => {});
 }
 
-function reverseRound(historyId){
+async function reverseRound(historyId){
   const entry = state.history.find(h => h.id === historyId);
   if(!entry) return;
-  if(!confirm(`Anular esta ronda (${entry.payer} pagou a ${entry.participants.length})? Os contadores voltam atrás.`)) return;
+  const ok = await askConfirm(
+    `Anular esta ronda (${entry.payer} pagou a ${entry.participants.length})? Os contadores voltam atrás.`,
+    'anular'
+  );
+  if(!ok) return;
 
   store.commit(current => {
     const idx = current.history.findIndex(h => h.id === historyId);
@@ -474,7 +545,8 @@ function reverseRound(historyId){
     current.history.splice(idx, 1);
     return { next: current, result: 'ok' };
   }).then(result => {
-    if(!result) alert('Não dá para anular esta ronda — alguém que participou já foi removido.');
+    if(result) toast('Ronda anulada.');
+    else toast('Não dá para anular esta ronda — alguém que participou já foi removido.', 'warn');
   }).catch(() => {});
 }
 
@@ -572,14 +644,18 @@ function addPerson(rawName){
   store.commit(current => {
     if(current.people.some(p => p.name.toLowerCase() === name.toLowerCase())) return null;
     current.people.push({ id: uid('p'), name, idas: 0, pagamentos: 0, pago: 0 });
-    return { next: current };
-  });
+    return { next: current, result: 'ok' };
+  }).then(result => {
+    if(result) clickSound();
+    else toast('Já existe alguém com esse nome.', 'warn');
+  }).catch(() => {});
 }
 
-function removePerson(id){
+async function removePerson(id){
   const person = state.people.find(p => p.id === id);
   if(!person) return;
-  if(!confirm('Remover ' + person.name + ' da equipa? Os dados dessa pessoa perdem-se.')) return;
+  const ok = await askConfirm('Remover ' + person.name + ' da equipa? Os dados dessa pessoa perdem-se.', 'remover');
+  if(!ok) return;
   store.commit(current => {
     current.people = current.people.filter(p => p.id !== id);
     current.selectedIds = current.selectedIds.filter(sid => sid !== id);
@@ -629,10 +705,11 @@ async function decidePayer(){
   let opening = Promise.resolve();
   if(mode === 'wheel'){
     buildWheel(localPool);
-    setHint('roleta pronta');
+    setHint('roleta carregada · ' + localPool.length + ' em jogo');
+    clickSound();
   } else {
     prepareReel(localPool);
-    setHint('caixa selada');
+    setHint('caixa selada · ' + localPool.length + ' lá dentro');
     opening = openCrate();
   }
 
@@ -666,6 +743,7 @@ async function decidePayer(){
     closeStage();
     hideResult();
     undoSnapshot = null;
+    toast('Não deu para registar o sorteio. Tenta outra vez.', 'warn');
     return;
   }
 
@@ -742,7 +820,25 @@ function audio(){
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if(!Ctx) return null;
   try{
-    if(!audioCtx) audioCtx = new Ctx();
+    if(!audioCtx){
+      audioCtx = new Ctx();
+      const master = audioCtx.createGain();
+      const shelf = audioCtx.createBiquadFilter();
+      const comp = audioCtx.createDynamicsCompressor();
+      master.gain.value = 0.85;
+      shelf.type = 'highshelf';
+      shelf.frequency.value = 5200;
+      shelf.gain.value = -4;
+      comp.threshold.value = -14;
+      comp.knee.value = 16;
+      comp.ratio.value = 6;
+      comp.attack.value = 0.004;
+      comp.release.value = 0.2;
+      master.connect(shelf);
+      shelf.connect(comp);
+      comp.connect(audioCtx.destination);
+      audioBus = master;
+    }
     if(audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }catch(e){
@@ -754,59 +850,171 @@ function primeAudio(){
   audio();
 }
 
-function blip(freq, dur, type, peak){
+function noiseBuf(ctx){
+  if(noiseBuffer && noiseBuffer.sampleRate === ctx.sampleRate) return noiseBuffer;
+  const len = Math.floor(ctx.sampleRate * 1.2);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for(let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  noiseBuffer = buf;
+  return buf;
+}
+
+function tone({ freq, to, type = 'sine', dur = 0.2, peak = 0.1, at = 0, glide = 0.9, cutoff = 0 }){
   const ctx = audio();
   if(!ctx) return;
+  const t0 = ctx.currentTime + at;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
-  const t0 = ctx.currentTime;
   osc.type = type;
   osc.frequency.setValueAtTime(freq, t0);
+  if(to) osc.frequency.exponentialRampToValueAtTime(Math.max(20, to), t0 + dur * glide);
   gain.gain.setValueAtTime(0.0001, t0);
   gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.008);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
+  let tail = osc;
+  if(cutoff){
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = cutoff;
+    osc.connect(filter);
+    tail = filter;
+  }
+  tail.connect(gain);
+  gain.connect(audioBus);
   osc.start(t0);
-  osc.stop(t0 + dur + 0.03);
+  osc.stop(t0 + dur + 0.05);
 }
 
-function tickSound(){
-  blip(1120 + rand() * 180, 0.05, 'square', 0.03);
-}
-
-function thudSound(){
-  blip(96 + rand() * 20, 0.24, 'sine', 0.18);
-}
-
-function chimeSound(){
-  blip(659, 0.32, 'triangle', 0.1);
-  setTimeout(() => blip(988, 0.5, 'triangle', 0.085), 120);
-}
-
-function whooshSound(){
+function noiseHit({ freq = 1200, to = 0, q = 1, dur = 0.12, peak = 0.1, at = 0, type = 'bandpass' }){
   const ctx = audio();
   if(!ctx) return;
-  const len = Math.floor(ctx.sampleRate * 0.55);
-  const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for(let i = 0; i < len; i++){
-    const decay = 1 - i / len;
-    data[i] = (Math.random() * 2 - 1) * decay * decay;
-  }
+  const t0 = ctx.currentTime + at;
   const src = ctx.createBufferSource();
   const filter = ctx.createBiquadFilter();
   const gain = ctx.createGain();
-  const t0 = ctx.currentTime;
-  filter.type = 'bandpass';
-  filter.frequency.setValueAtTime(380, t0);
-  filter.frequency.exponentialRampToValueAtTime(2800, t0 + 0.5);
-  gain.gain.value = 0.14;
-  src.buffer = buffer;
+  src.buffer = noiseBuf(ctx);
+  src.loop = true;
+  filter.type = type;
+  filter.Q.value = q;
+  filter.frequency.setValueAtTime(freq, t0);
+  if(to) filter.frequency.exponentialRampToValueAtTime(Math.max(40, to), t0 + dur);
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   src.connect(filter);
   filter.connect(gain);
-  gain.connect(ctx.destination);
-  src.start(t0);
+  gain.connect(audioBus);
+  src.start(t0, rand() * 0.9);
+  src.stop(t0 + dur + 0.05);
+}
+
+function buzz(pattern){
+  if(!soundOn() || reduceMotion()) return;
+  try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){ /* sem motor */ }
+}
+
+function tickSound(progress){
+  const p = typeof progress === 'number' ? progress : 0;
+  noiseHit({ freq: 2300 + p * 800 + rand() * 700, q: 7, dur: 0.038, peak: 0.058 + p * 0.034 });
+  tone({ freq: 1380 + p * 460 + rand() * 240, to: 780, type: 'square', dur: 0.05, peak: 0.026 + p * 0.018, cutoff: 6000 });
+}
+
+function thudSound(){
+  tone({ freq: 190, to: 46, type: 'sine', dur: 0.34, peak: 0.24, glide: 0.55 });
+  noiseHit({ freq: 900, to: 140, q: 0.8, dur: 0.14, peak: 0.09, type: 'lowpass' });
+}
+
+function knockSound(){
+  tone({ freq: 330, to: 118, type: 'triangle', dur: 0.17, peak: 0.15, glide: 0.5 });
+  noiseHit({ freq: 1900, q: 3, dur: 0.05, peak: 0.05 });
+}
+
+function creakSound(){
+  tone({ freq: 86, to: 172, type: 'sawtooth', dur: 0.64, peak: 0.075, cutoff: 620 });
+}
+
+function whooshSound(){
+  noiseHit({ freq: 320, to: 3400, q: 1.1, dur: 0.5, peak: 0.21 });
+  noiseHit({ freq: 2600, to: 420, q: 0.7, dur: 0.4, peak: 0.09, at: 0.16 });
+}
+
+function impactSound(){
+  tone({ freq: 260, to: 38, type: 'sine', dur: 0.55, peak: 0.32, glide: 0.4 });
+  tone({ freq: 62, to: 34, type: 'sine', dur: 0.75, peak: 0.2 });
+  noiseHit({ freq: 3200, to: 300, q: 0.6, dur: 0.32, peak: 0.18 });
+}
+
+function sparkleSound(){
+  for(let i = 0; i < 7; i++){
+    tone({ freq: 1500 + rand() * 2300, type: 'triangle', dur: 0.18, peak: 0.026, at: i * 0.07 + rand() * 0.05 });
+  }
+}
+
+function chimeSound(){
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+    tone({ freq: f, type: 'triangle', dur: 0.72, peak: 0.09, at: i * 0.085 });
+    tone({ freq: f * 2, type: 'sine', dur: 0.38, peak: 0.028, at: i * 0.085 + 0.012 });
+  });
+  tone({ freq: 130.81, type: 'sine', dur: 1.1, peak: 0.11, at: 0.02 });
+  tone({ freq: 196, type: 'sine', dur: 1, peak: 0.07, at: 0.05 });
+  sparkleSound();
+}
+
+function clickSound(){
+  tone({ freq: 660, to: 430, type: 'sine', dur: 0.05, peak: 0.035 });
+}
+
+function downSound(){
+  tone({ freq: 420, to: 190, type: 'triangle', dur: 0.24, peak: 0.08 });
+}
+
+function startRiser(ms){
+  stopRiser();
+  const ctx = audio();
+  if(!ctx || reduceMotion()) return;
+  const dur = ms / 1000;
+  const t0 = ctx.currentTime;
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  const oscA = ctx.createOscillator();
+  const oscB = ctx.createOscillator();
+  filter.type = 'lowpass';
+  filter.Q.value = 3;
+  filter.frequency.setValueAtTime(340, t0);
+  filter.frequency.exponentialRampToValueAtTime(4200, t0 + dur);
+  oscA.type = 'sawtooth';
+  oscB.type = 'sawtooth';
+  oscA.frequency.setValueAtTime(78, t0);
+  oscB.frequency.setValueAtTime(78.7, t0);
+  oscA.frequency.exponentialRampToValueAtTime(310, t0 + dur);
+  oscB.frequency.exponentialRampToValueAtTime(313, t0 + dur);
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(0.05, t0 + dur * 0.85);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  oscA.connect(filter);
+  oscB.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioBus);
+  oscA.start(t0);
+  oscB.start(t0);
+  oscA.stop(t0 + dur + 0.06);
+  oscB.stop(t0 + dur + 0.06);
+  riser = { gain, oscs: [oscA, oscB] };
+}
+
+function stopRiser(){
+  if(!riser) return;
+  const current = riser;
+  riser = null;
+  if(!audioCtx) return;
+  const now = audioCtx.currentTime;
+  try{
+    current.gain.gain.cancelScheduledValues(now);
+    current.gain.gain.setValueAtTime(Math.max(0.0001, current.gain.gain.value), now);
+    current.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+    current.oscs.forEach(osc => osc.stop(now + 0.16));
+  }catch(e){ /* ja terminou */ }
 }
 
 function bezierAxis(p1, p2, s){
@@ -833,14 +1041,23 @@ function clearTicks(){
 function scheduleTicks(count, dur, onTick){
   clearTicks();
   if(reduceMotion() || count < 2) return;
-  const steps = Math.min(count, 64);
+  const steps = Math.min(count, 72);
   for(let i = 1; i <= steps; i++){
-    const at = timeForProgress(i / steps) * dur;
+    const progress = i / steps;
+    const at = timeForProgress(progress) * dur;
     tickTimers.push(setTimeout(() => {
-      tickSound();
+      tickSound(progress);
+      if(progress > 0.88) buzz(8);
       if(onTick) onTick();
     }, at));
   }
+}
+
+function flash(){
+  const el = $('stageFlash');
+  el.classList.remove('fire');
+  void el.offsetWidth;
+  el.classList.add('fire');
 }
 
 function transitionDone(el, dur){
@@ -862,15 +1079,19 @@ function openStage(mode){
   lastFocus = document.activeElement;
   $('crateScene').classList.toggle('hidden', mode !== 'reel');
   $('wheelScene').classList.toggle('hidden', mode !== 'wheel');
+  $('wheelScene').classList.remove('settled');
   $('crateScene').dataset.phase = 'idle';
+  $('reelTrack').classList.remove('blurring');
+  $('stageFlash').classList.remove('fire');
   $('stageReveal').classList.add('hidden');
   $('stageScene').classList.remove('is-revealed');
   $('stageButtons').classList.add('hidden');
   $('stageUndo').classList.add('hidden');
+  $('stageHint').classList.remove('hot');
   clearConfetti();
   setHint('');
   const stage = $('stage');
-  stage.classList.remove('hidden');
+  stage.classList.remove('hidden', 'is-hot');
   document.body.classList.add('stage-locked');
   stageOpen = true;
   requestAnimationFrame(() => stage.classList.add('is-open'));
@@ -882,25 +1103,43 @@ function closeStage(){
   stageOpen = false;
   stageToken += 1;
   clearTicks();
+  stopRiser();
   drawBusy = false;
   updateDecideButton();
   const stage = $('stage');
-  stage.classList.remove('is-open');
+  stage.classList.remove('is-open', 'is-hot');
   document.body.classList.remove('stage-locked');
   setTimeout(() => {
     if(stageOpen) return;
     stage.classList.add('hidden');
     $('crateScene').dataset.phase = 'idle';
+    $('reelTrack').classList.remove('blurring');
+    $('wheelScene').classList.remove('settled');
     clearConfetti();
-  }, 260);
+  }, 280);
   if(lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
   lastFocus = null;
 }
 
-function reelCardHtml(person, isWin){
-  return `<div class="reel-card${isWin ? ' win' : ''}">
+function tierMap(parts, weights){
+  const max = Math.max(...weights, 0.0001);
+  const pct = percentSplit(weights);
+  const map = {};
+  parts.forEach((p, i) => {
+    const ratio = weights[i] / max;
+    const tier = ratio > 0.8 ? 1 : ratio > 0.6 ? 2 : ratio > 0.4 ? 3 : 4;
+    map[p.name] = { tier, pct: pct[i] };
+  });
+  return map;
+}
+
+function reelCardHtml(person, isWin, tiers){
+  const info = (tiers && tiers[person.name]) || { tier: 1, pct: null };
+  const pct = info.pct === null ? '' : `<span class="reel-card-pct">${info.pct}%</span>`;
+  return `<div class="reel-card${isWin ? ' win' : ''}" data-tier="${info.tier}">
     ${avatarHtml(person.name)}
     <span class="reel-card-name">${escapeHtml(person.name)}</span>
+    ${pct}
   </div>`;
 }
 
@@ -912,10 +1151,12 @@ function cardWidth(){
 function prepareReel(parts){
   const track = $('reelTrack');
   const weights = chanceWeights(parts, state.luck);
+  const tiers = tierMap(parts, weights);
   const cards = [];
-  for(let i = 0; i < 14; i++) cards.push(reelCardHtml(parts[pickIndex(weights)], false));
+  for(let i = 0; i < 14; i++) cards.push(reelCardHtml(parts[pickIndex(weights)], false, tiers));
   track.style.transition = 'none';
   track.style.transform = 'translate3d(0,0,0)';
+  track.classList.remove('blurring');
   track.innerHTML = cards.join('');
 }
 
@@ -930,35 +1171,59 @@ async function openCrate(){
     await wait(40);
     return;
   }
-  await wait(300);
+
+  await wait(240);
+  scene.dataset.phase = 'charge';
+  setHint('a caixa aquece…');
+  creakSound();
+  await wait(620);
+
   setHint('alguma coisa mexe lá dentro…');
   scene.dataset.phase = 'shake';
+  knockSound();
+  buzz(18);
+  await wait(460);
   thudSound();
-  await wait(450);
-  thudSound();
-  await wait(470);
+  buzz(26);
+  await wait(440);
+
+  setHint('não aguenta mais…');
+  $('stageHint').classList.add('hot');
+  $('stage').classList.add('is-hot');
+  scene.dataset.phase = 'strain';
+  tag.textContent = 'a ceder';
+  creakSound();
+  await wait(760);
+
   setHint('a abrir…');
   scene.dataset.phase = 'burst';
   whooshSound();
-  await wait(280);
+  impactSound();
+  flash();
+  buzz([0, 40, 30, 60]);
+  await wait(320);
+
   scene.dataset.phase = 'open';
   tag.textContent = 'aberta';
-  await wait(600);
+  await wait(620);
 }
 
 async function spinReel(parts, winner){
   const track = $('reelTrack');
   const viewport = $('reel').querySelector('.reel-viewport');
   const weights = chanceWeights(parts, state.luck);
+  const tiers = tierMap(parts, weights);
   const reduce = reduceMotion();
   const W = cardWidth();
   const viewportW = viewport.clientWidth || W * 4;
-  const winIndex = (reduce ? 5 : 42) + Math.floor(rand() * 7);
+  const winIndex = (reduce ? 5 : 46) + Math.floor(rand() * 9);
   const total = winIndex + Math.ceil(viewportW / W) + 5;
 
   const cards = [];
   for(let i = 0; i < total; i++){
-    cards.push(i === winIndex ? reelCardHtml(winner, true) : reelCardHtml(parts[pickIndex(weights)], false));
+    cards.push(i === winIndex
+      ? reelCardHtml(winner, true, tiers)
+      : reelCardHtml(parts[pickIndex(weights)], false, tiers));
   }
   track.innerHTML = cards.join('');
 
@@ -968,16 +1233,23 @@ async function spinReel(parts, winner){
 
   track.style.transition = 'none';
   track.style.transform = 'translate3d(0,0,0)';
+  track.classList.remove('blurring');
   void track.offsetWidth;
+  track.style.setProperty('--spin-ms', dur + 'ms');
+  track.classList.add('blurring');
   track.style.transition = `transform ${dur}ms cubic-bezier(${SPIN_EASE.join(',')})`;
   track.style.transform = `translate3d(${target}px,0,0)`;
   scheduleTicks(winIndex, dur);
+  startRiser(dur);
 
   await transitionDone(track, dur);
   clearTicks();
+  stopRiser();
+  track.classList.remove('blurring');
   const winCard = track.querySelector('.reel-card.win');
   if(winCard) winCard.classList.add('landed');
   thudSound();
+  buzz(45);
 }
 
 function polar(cx, cy, r, deg){
@@ -1063,15 +1335,21 @@ async function spinWheel(parts, winner){
   g.style.transition = `transform ${dur}ms cubic-bezier(${SPIN_EASE.join(',')})`;
   g.style.transform = `rotate(${target}deg)`;
 
+  $('wheelScene').classList.remove('settled');
+  whooshSound();
+  startRiser(dur);
   scheduleTicks(Math.round(target / 360 * parts.length), dur, () => {
     pin.classList.remove('flick');
     void pin.offsetWidth;
     pin.classList.add('flick');
   });
+  setTimeout(() => { if(stageOpen) $('stage').classList.add('is-hot'); }, dur * 0.55);
 
   await transitionDone(g, dur);
   clearTicks();
+  stopRiser();
   orientLabels(target % 360);
+  $('wheelScene').classList.add('settled');
 
   const winIndex = parts.findIndex(p => p.name === winner.name);
   g.querySelectorAll('.wheel-slice').forEach(el => {
@@ -1082,6 +1360,7 @@ async function spinWheel(parts, winner){
     el.classList.toggle('faded', el.dataset.i !== String(winIndex));
   });
   thudSound();
+  buzz(45);
 }
 
 function revealWinner(name, meta){
@@ -1093,8 +1372,12 @@ function revealWinner(name, meta){
   $('stageReveal').classList.remove('hidden');
   $('stageUndo').classList.toggle('hidden', !undoSnapshot);
   $('stageButtons').classList.remove('hidden');
+  $('stageHint').classList.remove('hot');
+  $('stage').classList.remove('is-hot');
   setHint('');
+  flash();
   chimeSound();
+  buzz([0, 30, 40, 30, 40, 90]);
   burstConfetti();
   $('stageDone').focus();
 }
@@ -1108,21 +1391,25 @@ function burstConfetti(){
   const host = $('confetti');
   host.innerHTML = '';
   if(reduceMotion()) return;
-  const colors = AVATAR_COLORS.concat(['#b8863b', '#f1e4c9', '#e8c07d', '#3f7a5c']);
-  for(let i = 0; i < 60; i++){
+  const colors = ['#b8863b', '#f1e4c9', '#e8c07d', '#ffd28a', '#fff3d4', '#3f7a5c', '#8a4b2b', '#6b3f63'];
+  const frag = document.createDocumentFragment();
+  for(let i = 0; i < 96; i++){
+    const round = rand() < 0.32;
+    const size = 4 + rand() * 6;
     const bit = document.createElement('i');
-    bit.className = 'confetti-bit';
+    bit.className = round ? 'confetti-bit round' : 'confetti-bit';
     bit.style.left = (rand() * 100).toFixed(2) + '%';
-    bit.style.width = (5 + rand() * 6).toFixed(1) + 'px';
-    bit.style.height = (9 + rand() * 9).toFixed(1) + 'px';
+    bit.style.width = size.toFixed(1) + 'px';
+    bit.style.height = (round ? size : size + 4 + rand() * 8).toFixed(1) + 'px';
     bit.style.background = colors[Math.floor(rand() * colors.length)];
-    bit.style.animationDelay = (rand() * 0.4).toFixed(2) + 's';
-    bit.style.animationDuration = (1.6 + rand() * 1.3).toFixed(2) + 's';
-    bit.style.setProperty('--dx', ((rand() * 2 - 1) * 140).toFixed(0) + 'px');
-    bit.style.setProperty('--spin', (360 + rand() * 900).toFixed(0) + 'deg');
-    host.appendChild(bit);
+    bit.style.animationDelay = (rand() * 0.55).toFixed(2) + 's';
+    bit.style.animationDuration = (1.5 + rand() * 1.6).toFixed(2) + 's';
+    bit.style.setProperty('--dx', ((rand() * 2 - 1) * 190).toFixed(0) + 'px');
+    bit.style.setProperty('--spin', (360 + rand() * 1080).toFixed(0) + 'deg');
+    frag.appendChild(bit);
   }
-  setTimeout(clearConfetti, 3400);
+  host.appendChild(frag);
+  setTimeout(clearConfetti, 3800);
 }
 
 function clearConfetti(){
@@ -1135,8 +1422,10 @@ function undoLast(){
   undoSnapshot = null;
   selfDecisionId = snapshot.history[0] ? snapshot.history[0].id || null : null;
   store.commit(() => ({ next: snapshot }));
+  downSound();
   closeStage();
   hideResult();
+  toast('Sorteio desfeito.');
 }
 
 function showResultCard(payerName){
@@ -1181,19 +1470,38 @@ function bindEvents(){
     store.commit(current => { current.luck = value; return { next: current }; });
   });
   document.querySelectorAll('.anim-opt').forEach(btn => {
-    btn.addEventListener('click', () => setAnimStyle(btn.dataset.style));
+    btn.addEventListener('click', () => {
+      setAnimStyle(btn.dataset.style);
+      primeAudio();
+      clickSound();
+    });
   });
+  $('themeBtn').addEventListener('click', () => {
+    toggleTheme();
+    clickSound();
+  });
+  $('modalOk').addEventListener('click', () => closeModal(true));
+  $('modalCancel').addEventListener('click', () => closeModal(false));
+  $('modalVeil').addEventListener('click', () => closeModal(false));
   $('stageClose').addEventListener('click', closeStage);
   $('stageDone').addEventListener('click', closeStage);
   $('stageVeil').addEventListener('click', closeStage);
   $('stageUndo').addEventListener('click', undoLast);
-  $('soundBtn').addEventListener('click', () => setSoundOn(!soundOn()));
+  $('soundBtn').addEventListener('click', () => {
+    const next = !soundOn();
+    setSoundOn(next);
+    if(next){ primeAudio(); clickSound(); }
+  });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
   document.addEventListener('keydown', event => {
-    if(event.key === 'Escape' && stageOpen) closeStage();
+    if(event.key !== 'Escape') return;
+    if(modalResolve) closeModal(false);
+    else if(stageOpen) closeStage();
   });
 }
 
 async function main(){
+  applyTheme();
   bindEvents();
   renderAnimToggle();
   renderSoundToggle();

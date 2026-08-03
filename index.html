@@ -5,18 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <meta name="description" content="Quem calha pagar a próxima rodada — justo pelo tamanho da conta.">
 <meta name="theme-color" content="#4a3323">
+<meta name="color-scheme" content="light dark">
 <title>Quem Paga o Café</title>
 <meta property="og:title" content="Quem Paga o Café">
 <meta property="og:description" content="Quem calha pagar a próxima rodada — justo pelo tamanho da conta.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
-<link rel="manifest" href="manifest.webmanifest?v=11">
+<link rel="manifest" href="manifest.webmanifest?v=12">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a3323' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 8h1a4 4 0 0 1 0 8h-1'/%3E%3Cpath d='M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z'/%3E%3Cline x1='6' y1='1' x2='6' y2='4'/%3E%3Cline x1='10' y1='1' x2='10' y2='4'/%3E%3Cline x1='14' y1='1' x2='14' y2='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=11">
+<link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
 
@@ -67,6 +68,10 @@
         <span class="sync-dot" aria-hidden="true"></span>
         <span id="syncText">a ligar…</span>
       </span>
+      <button type="button" class="theme-btn" id="themeBtn" aria-label="Mudar tema">
+        <svg class="theme-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.2 4.2l1.5 1.5M18.3 18.3l1.5 1.5M2 12h2M20 12h2M4.2 19.8l1.5-1.5M18.3 5.7l1.5-1.5"/></svg>
+        <svg class="theme-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>
+      </button>
       <div class="stat-chip"><strong id="statTeamCount">0</strong><span>na equipa</span></div>
       <div class="stat-chip"><strong id="statTodayCount">0</strong><span>hoje</span></div>
     </div>
@@ -175,6 +180,8 @@
 <div class="stage hidden" id="stage" role="dialog" aria-modal="true" aria-labelledby="stageTitle">
   <div class="stage-veil" id="stageVeil"></div>
   <div class="stage-rays" aria-hidden="true"></div>
+  <div class="stage-grain" aria-hidden="true"></div>
+  <div class="stage-flash" id="stageFlash" aria-hidden="true"></div>
 
   <div class="stage-panel">
 
@@ -196,17 +203,21 @@
       <div class="crate-scene hidden" id="crateScene" data-phase="idle">
         <div class="crate">
           <div class="crate-beam" aria-hidden="true"></div>
-          <div class="crate-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-          <div class="crate-lid">
-            <span class="crate-lid-strap"></span>
-          </div>
+          <div class="crate-ring" aria-hidden="true"></div>
+          <div class="crate-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
           <div class="crate-box">
             <div class="crate-inner"></div>
+            <div class="crate-glow" aria-hidden="true"></div>
             <div class="crate-face">
               <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
               <span class="crate-tag">selada</span>
             </div>
           </div>
+          <div class="crate-seam" aria-hidden="true"></div>
+          <div class="crate-lid">
+            <span class="crate-lid-strap"></span>
+          </div>
+          <div class="crate-dust" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
           <div class="crate-shadow" aria-hidden="true"></div>
         </div>
 
@@ -221,9 +232,18 @@
       <div class="wheel-scene hidden" id="wheelScene">
         <div class="wheel-stage">
           <svg class="wheel-svg" viewBox="0 0 240 240" aria-hidden="true">
+            <defs>
+              <radialGradient id="wheelSheen" cx="34%" cy="26%" r="72%">
+                <stop offset="0%" stop-color="#fff" stop-opacity=".22"/>
+                <stop offset="55%" stop-color="#fff" stop-opacity=".04"/>
+                <stop offset="100%" stop-color="#000" stop-opacity=".34"/>
+              </radialGradient>
+            </defs>
             <circle class="wheel-back" cx="120" cy="120" r="114"/>
             <g id="wheelSpin"></g>
+            <circle class="wheel-sheen" cx="120" cy="120" r="110" fill="url(#wheelSheen)"/>
             <circle class="wheel-rim" cx="120" cy="120" r="112"/>
+            <circle class="wheel-rim-inner" cx="120" cy="120" r="104"/>
             <circle class="wheel-hub" cx="120" cy="120" r="23"/>
             <circle class="wheel-hub-dot" cx="120" cy="120" r="7"/>
           </svg>
@@ -232,7 +252,9 @@
       </div>
 
       <div class="stage-reveal hidden" id="stageReveal">
+        <div class="reveal-rays" aria-hidden="true"></div>
         <div class="reveal-halo" aria-hidden="true"></div>
+        <div class="reveal-ring" aria-hidden="true"></div>
         <div class="avatar reveal-avatar" id="revealAvatar"></div>
         <p class="reveal-kicker">hoje paga</p>
         <h2 class="reveal-name" id="revealName"></h2>
@@ -253,7 +275,20 @@
   <div class="confetti" id="confetti" aria-hidden="true"></div>
 </div>
 
-<script type="module" src="app.js?v=11"></script>
+<div class="modal hidden" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalText">
+  <div class="modal-veil" id="modalVeil"></div>
+  <div class="modal-card">
+    <p class="modal-text" id="modalText"></p>
+    <div class="modal-actions">
+      <button type="button" class="modal-btn ghost" id="modalCancel">cancelar</button>
+      <button type="button" class="modal-btn" id="modalOk">confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-host" id="toastHost" aria-live="polite"></div>
+
+<script type="module" src="app.js?v=12"></script>
 
 </body>
 </html>

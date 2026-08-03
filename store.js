@@ -1,4 +1,4 @@
-import { firebaseConfig, FIRESTORE_COLLECTION, FIRESTORE_DOC, SEED_STATE } from './config.js?v=11';
+import { firebaseConfig, FIRESTORE_COLLECTION, FIRESTORE_DOC, SEED_STATE } from './config.js?v=12';
 
 const LOCAL_KEY = 'cafeLedger_v2';
 const FIREBASE_VERSION = '10.12.2';

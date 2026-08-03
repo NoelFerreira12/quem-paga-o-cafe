@@ -12,8 +12,9 @@ Site estático, corre em GitHub Pages, sem servidor próprio.
 
 Dá para: adicionar/remover pessoas, **mudar nomes** (reescreve o histórico), escolher quem
 está presente, sortear, **desfazer a última** ou **anular qualquer ronda** do histórico, e ver
-os **números** no fundo. É instalável no telemóvel (menu do browser → adicionar ao ecrã
-inicial).
+os **números** no fundo. Tem **tema claro e escuro** (segue o sistema; o botão na barra de topo
+força um deles, guardado em `cafeTheme_v1`). É instalável no telemóvel (menu do browser →
+adicionar ao ecrã inicial).
 
 ---
 
@@ -168,10 +169,21 @@ entrado é obrigado a introduzir a nova.
 | [app.js](app.js) | Regras do sorteio, palco da animação e desenho dos painéis |
 
 O sorteio abre em ecrã inteiro. Há dois modos, escolhidos no cartão "quem está hoje" e
-guardados no browser (`cafeAnim_v1`): **caixa** (a caixa abana, abre, o feixe sai e a fita
-corre até ao nome) e **roleta** (roda com as fatias do tamanho da hipótese real). O botão do
-altifalante liga/desliga os efeitos (`cafeSound_v1`, WebAudio, sem ficheiros). Com
-`prefers-reduced-motion` a animação é reduzida ao mínimo.
+guardados no browser (`cafeAnim_v1`):
+
+- **caixa** — a caixa aquece (`charge`), abana com pancadas (`shake`), a costura acende e a
+  tampa chocalha até não aguentar (`strain`), rebenta com clarão, onda de choque, faíscas e pó
+  (`burst`) e só então a fita sobe (`open`) e corre até ao nome. Cada cartão da fita é pintado
+  pela **raridade** — quanto menor a hipótese daquela pessoa, mais raro (cinza → azul → roxo →
+  dourado) — e leva desfoque de movimento enquanto voa;
+- **roleta** — roda com as fatias do tamanho da hipótese real, o ponteiro bate em cada fatia e
+  no fim a fatia vencedora fica a pulsar.
+
+O som é todo sintetizado em WebAudio, sem ficheiros: cadeia mestre com compressor, cliques
+mecânicos que sobem de tom à medida que a fita abranda, pancadas com envelope de altura,
+range/riser de tensão durante o giro, impacto na abertura e um acorde final com brilho. O botão
+do altifalante liga/desliga tudo (`cafeSound_v1`) e também controla a vibração no telemóvel.
+Com `prefers-reduced-motion` a animação é reduzida ao mínimo e o riser não toca.
 
 ---
 

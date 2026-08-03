@@ -1,4 +1,4 @@
-import { SHARED_PASSWORD_HASH } from './config.js?v=11';
+import { SHARED_PASSWORD_HASH } from './config.js?v=12';
 
 const UNLOCK_KEY = 'cafeUnlock_v1';
 
@@ -61,6 +61,10 @@ export function requireUnlock(){
       const hash = await sha256(input.value);
       if(hash !== SHARED_PASSWORD_HASH){
         error.textContent = 'palavra-passe errada';
+        const card = gate.querySelector('.gate-card');
+        card.classList.remove('shake');
+        void card.offsetWidth;
+        card.classList.add('shake');
         input.select();
         return;
       }
