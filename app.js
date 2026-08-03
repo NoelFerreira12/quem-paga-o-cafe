@@ -1,5 +1,6 @@
-import { createStore } from './store.js?v=12';
-import { requireUnlock } from './auth.js?v=12';
+import { createStore } from './store.js?v=13';
+import { requireUnlock } from './auth.js?v=13';
+import { t, getLang, setLang, otherLang, months, weekdays, applyStatic } from './i18n.js?v=13';
 
 const AVATAR_COLORS = ['#4a3323', '#2f5d50', '#8a4b2b', '#3b5b7a', '#6b3f63', '#7a5c1e', '#455a3f', '#734a4a'];
 const HISTORY_LIMIT = 25;
@@ -11,11 +12,13 @@ const SPIN_MS = 5600;
 const SPIN_MS_REDUCED = 320;
 const THEME_COLORS = { light: '#4a3323', dark: '#14100b' };
 
-const STATUS_TEXT = {
-  cloud: 'sincronizado com a equipa',
-  local: 'só neste browser',
-  volatile: 'sem guardar (o browser bloqueou)',
-  error: 'sem ligação à nuvem'
+const ICON = {
+  cup: 'i-cup',
+  coin: 'i-coin',
+  hash: 'i-hash',
+  chart: 'i-chart',
+  down: 'i-down',
+  trophy: 'i-trophy'
 };
 
 let store = null;
@@ -35,6 +38,8 @@ let noiseBuffer = null;
 let riser = null;
 let tickTimers = [];
 let modalResolve = null;
+let statusMode = 'local';
+let knownHistoryIds = new Set();
 
 const $ = id => document.getElementById(id);
 
@@ -136,7 +141,7 @@ function closeModal(answer){
 function askConfirm(message, okLabel){
   closeModal(false);
   $('modalText').textContent = message;
-  $('modalOk').textContent = okLabel || 'confirmar';
+  $('modalOk').textContent = okLabel || t('modal.confirm');
   $('modal').classList.remove('hidden');
   $('modalOk').focus();
   return new Promise(resolve => { modalResolve = resolve; });
@@ -163,7 +168,7 @@ function applyTheme(){
   const dark = theme === 'dark' || (theme === 'auto' && systemDark());
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute('content', dark ? THEME_COLORS.dark : THEME_COLORS.light);
-  $('themeBtn').setAttribute('aria-label', dark ? 'Mudar para tema claro' : 'Mudar para tema escuro');
+  $('themeBtn').setAttribute('aria-label', dark ? t('top.themeLight') : t('top.themeDark'));
 }
 
 function toggleTheme(){
@@ -179,9 +184,44 @@ function signed(n){
 
 function saldoLabel(p){
   const b = balanceOf(p);
-  if(b < 0) return 'deve ' + (-b);
-  if(b > 0) return 'à frente ' + b;
-  return 'em dia';
+  if(b < 0) return t('balance.owes', { n: -b });
+  if(b > 0) return t('balance.ahead', { n: b });
+  return t('balance.even');
+}
+
+function toneOf(p){
+  const b = balanceOf(p);
+  return b < 0 ? 'debt' : b > 0 ? 'ahead' : 'even';
+}
+
+function icon(name, size){
+  const s = size || 14;
+  return `<svg class="ico" width="${s}" height="${s}" aria-hidden="true"><use href="#${name}"/></svg>`;
+}
+
+function shortDate(dateStr){
+  const parts = String(dateStr).split('/');
+  if(parts.length !== 3) return dateStr;
+  const day = Number(parts[0]);
+  const month = Number(parts[1]);
+  const year = Number(parts[2]);
+  if(!day || !month || !year) return dateStr;
+  const when = new Date(year, month - 1, day);
+  const today = new Date();
+  const dayMs = 86400000;
+  const diff = Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - when) / dayMs);
+  if(diff === 0) return t('history.today');
+  if(diff === 1) return t('history.yesterday');
+  return day + ' ' + (months()[month - 1] || '');
+}
+
+function avatarGroupHtml(names){
+  if(names.length === 0) return `<span class="group-empty">${escapeHtml(t('history.alone'))}</span>`;
+  const shown = names.slice(0, 4);
+  const rest = names.length - shown.length;
+  const bits = shown.map(n => `<span class="group-item" title="${escapeHtml(n)}">${avatarHtml(n, 'avatar-xs')}</span>`).join('');
+  const more = rest > 0 ? `<span class="group-more">${escapeHtml(t('history.others', { n: rest }))}</span>` : '';
+  return `<span class="avatar-group" title="${escapeHtml(names.join(', '))}">${bits}${more}</span>`;
 }
 
 function escapeHtml(str){
@@ -215,27 +255,31 @@ function renderPeopleList(){
   const ul = $('peopleList');
   ul.innerHTML = '';
   if(state.people.length === 0){
-    ul.innerHTML = emptyStateHtml('ainda sem ninguém, adiciona a equipa aqui em cima');
+    ul.innerHTML = emptyStateHtml(t('team.empty'));
     return;
   }
   state.people.forEach(p => {
     const li = document.createElement('li');
     li.className = 'person-row';
     li.dataset.id = p.id;
-    const saldo = balanceOf(p);
-    const tone = saldo < 0 ? 'debt' : saldo > 0 ? 'ahead' : 'even';
     li.innerHTML = `
       ${avatarHtml(p.name)}
       <div class="person-main">
         <span class="person-name">${escapeHtml(p.name)}</span>
-        <span class="person-stats">bebeu ${p.idas} &middot; pagou ${p.pago} &middot; <span class="person-saldo" data-tone="${tone}">${saldoLabel(p)}</span></span>
+        <span class="person-stats">
+          <span class="metric" title="${escapeHtml(t('team.drank', { n: p.idas }))}">${icon(ICON.cup, 13)}${p.idas}</span>
+          <span class="metric" title="${escapeHtml(t('team.paid', { n: p.pago }))}">${icon(ICON.coin, 13)}${p.pago}</span>
+          <span class="pill" data-tone="${toneOf(p)}">${escapeHtml(saldoLabel(p))}</span>
+        </span>
       </div>
-      <button class="row-btn edit-btn" data-id="${escapeHtml(p.id)}" aria-label="Mudar o nome de ${escapeHtml(p.name)}">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-      </button>
-      <button class="row-btn remove-btn" data-id="${escapeHtml(p.id)}" aria-label="Remover ${escapeHtml(p.name)}">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      </button>
+      <span class="row-tools">
+        <button class="row-btn edit-btn" data-id="${escapeHtml(p.id)}" aria-label="${escapeHtml(t('team.rename', { name: p.name }))}">
+          <svg width="15" height="15"><use href="#i-pencil"/></svg>
+        </button>
+        <button class="row-btn remove-btn" data-id="${escapeHtml(p.id)}" aria-label="${escapeHtml(t('team.remove', { name: p.name }))}">
+          <svg width="15" height="15"><use href="#i-trash"/></svg>
+        </button>
+      </span>
     `;
     ul.appendChild(li);
   });
@@ -282,7 +326,7 @@ function commitRename(id, rawName){
   const person = state.people.find(p => p.id === id);
   if(!person || !newName || newName === person.name){ renderPeopleList(); return; }
   if(state.people.some(p => p.id !== id && p.name.toLowerCase() === newName.toLowerCase())){
-    toast('Já existe alguém com esse nome.', 'warn');
+    toast(t('team.dupe'), 'warn');
     renderPeopleList();
     return;
   }
@@ -303,7 +347,7 @@ function renderSelectionList(){
   const ul = $('selectionList');
   ul.innerHTML = '';
   if(state.people.length === 0){
-    ul.innerHTML = emptyStateHtml('adiciona pessoas à equipa primeiro');
+    ul.innerHTML = emptyStateHtml(t('today.empty'));
   } else {
     const selected = state.people.filter(p => state.selectedIds.includes(p.id));
     const pool = eligiblePool(selected, state.history);
@@ -319,14 +363,15 @@ function renderSelectionList(){
       const chance = !isSel
         ? ''
         : chanceById[p.id] === undefined
-          ? '<span class="sel-chance out" title="pagou a última ronda, fica de fora">fora</span>'
-          : `<span class="sel-chance" title="hipótese de pagar">${chanceById[p.id]}%</span>`;
+          ? `<span class="sel-chance out" title="${escapeHtml(t('today.outWhy'))}">${escapeHtml(t('today.out'))}</span>`
+          : `<span class="sel-chance" title="${escapeHtml(t('today.chance'))}" style="--fill:${chanceById[p.id]}%">${chanceById[p.id]}%</span>`;
+      li.className = isSel ? 'sel-row is-on' : 'sel-row';
       li.innerHTML = `
         <input type="checkbox" data-id="${escapeHtml(p.id)}" ${checked} id="chk_${escapeHtml(p.id)}">
         ${avatarHtml(p.name, 'avatar-sm')}
         <label class="sel-name" for="chk_${escapeHtml(p.id)}">${escapeHtml(p.name)}</label>
         ${chance}
-        <span class="sel-badge" data-tone="${balanceOf(p) < 0 ? 'debt' : balanceOf(p) > 0 ? 'ahead' : 'even'}">${saldoLabel(p)}</span>
+        <span class="pill" data-tone="${toneOf(p)}">${escapeHtml(saldoLabel(p))}</span>
       `;
       ul.appendChild(li);
     });
@@ -341,7 +386,7 @@ function renderFairness(){
   const ul = $('fairnessList');
   ul.innerHTML = '';
   if(state.people.length === 0){
-    ul.innerHTML = emptyStateHtml('ainda sem pessoas para ordenar');
+    ul.innerHTML = emptyStateHtml(t('fair.empty'));
     return;
   }
   const sorted = [...state.people].sort((a, b) => {
@@ -356,17 +401,21 @@ function renderFairness(){
     const li = document.createElement('li');
     li.className = 'fair-row';
     const b = balanceOf(p);
-    const tone = b < 0 ? 'debt' : b > 0 ? 'ahead' : 'even';
-    const barWidth = Math.round((Math.abs(b) / maxAbs) * 100);
+    const tone = toneOf(p);
+    const half = Math.round((Math.abs(b) / maxAbs) * 50);
+    const left = b < 0 ? 50 - half : 50;
     const next = p.name === blocked
-      ? '<span class="fair-out">pagou a última</span>'
-      : (p === nextUp ? '<span class="fair-next">próximo</span>' : '');
+      ? `<span class="tag tag-out">${escapeHtml(t('fair.last'))}</span>`
+      : (p === nextUp ? `<span class="tag tag-next">${escapeHtml(t('fair.next'))}</span>` : '');
     li.innerHTML = `
-      <span class="fair-rank">${idx + 1}&ordm;</span>
+      <span class="fair-rank">${idx + 1}</span>
       ${avatarHtml(p.name, 'avatar-sm')}
       <span class="fair-name">${escapeHtml(p.name)}</span>
       ${next}
-      <div class="fair-bar-track"><div class="fair-bar-fill" data-tone="${tone}" style="width:${barWidth}%"></div></div>
+      <div class="fair-bar" role="img" aria-label="${escapeHtml(saldoLabel(p))}">
+        <span class="fair-bar-zero"></span>
+        <span class="fair-bar-fill" data-tone="${tone}" style="left:${left}%;width:${Math.max(half, b === 0 ? 0 : 2)}%"></span>
+      </div>
       <span class="fair-pct" data-tone="${tone}">${signed(b)}</span>
     `;
     ul.appendChild(li);
@@ -377,7 +426,7 @@ function renderHistory(){
   const ul = $('historyList');
   ul.innerHTML = '';
   if(state.history.length === 0){
-    ul.innerHTML = emptyStateHtml('ainda sem decisões registadas');
+    ul.innerHTML = emptyStateHtml(t('history.empty'));
     return;
   }
   state.history.forEach(h => {
@@ -387,17 +436,20 @@ function renderHistory(){
       li.innerHTML = roundEditorHtml(h);
     } else {
       li.className = 'history-row';
-      const outros = h.participants.filter(n => n !== h.payer);
-      const outrosTxt = outros.length ? ' com ' + outros.join(', ') : ' sozinho';
+      const others = h.participants.filter(n => n !== h.payer);
       li.innerHTML = `
-        <span class="history-time">${escapeHtml(h.date)}<br>${escapeHtml(h.time)}</span>
-        <span class="history-text"><b>${escapeHtml(h.payer)}</b> pagou,${escapeHtml(outrosTxt)}</span>
+        ${avatarHtml(h.payer, 'avatar-sm')}
+        <span class="history-main">
+          <span class="history-payer">${escapeHtml(h.payer)}</span>
+          <span class="history-when">${escapeHtml(shortDate(h.date))} · ${escapeHtml(h.time)}</span>
+        </span>
+        ${avatarGroupHtml(others)}
         <span class="hist-actions">
-          <button class="row-btn hist-edit" data-id="${escapeHtml(h.id)}" aria-label="Editar quem foi nesta ronda">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          <button class="row-btn hist-edit" data-id="${escapeHtml(h.id)}" aria-label="${escapeHtml(t('history.edit'))}">
+            <svg width="14" height="14"><use href="#i-pencil"/></svg>
           </button>
-          <button class="row-btn hist-undo" data-id="${escapeHtml(h.id)}" aria-label="Anular esta ronda">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.6-8.4L3 7"/></svg>
+          <button class="row-btn hist-undo" data-id="${escapeHtml(h.id)}" aria-label="${escapeHtml(t('history.undo'))}">
+            <svg width="14" height="14"><use href="#i-revert"/></svg>
           </button>
         </span>
       `;
@@ -427,15 +479,15 @@ function roundEditorHtml(h){
     ? editDraft.participants.map(n => `<option value="${escapeHtml(n)}" ${n === editDraft.payer ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('')
     : '<option value="">—</option>';
   return `
-    <div class="re-head">quem foi neste café <span class="re-when">${escapeHtml(h.date)} ${escapeHtml(h.time)}</span></div>
+    <div class="re-head">${escapeHtml(t('editor.who'))} <span class="re-when">${escapeHtml(shortDate(h.date))} · ${escapeHtml(h.time)}</span></div>
     <div class="re-people">${rows}</div>
     <div class="re-payer">
-      <span class="re-payer-label">quem pagou</span>
+      <span class="re-payer-label">${escapeHtml(t('editor.payer'))}</span>
       <select class="re-payer-sel">${payerOpts}</select>
     </div>
     <div class="re-actions">
-      <button class="chip-btn re-cancel" type="button">cancelar</button>
-      <button class="chip-btn re-save" type="button">guardar</button>
+      <button class="chip-btn re-cancel" type="button">${escapeHtml(t('editor.cancel'))}</button>
+      <button class="chip-btn re-save" type="button">${escapeHtml(t('editor.save'))}</button>
     </div>
   `;
 }
@@ -480,8 +532,8 @@ function saveRoundEdit(){
   const { id } = editDraft;
   const newParts = [...editDraft.participants];
   const newPayer = editDraft.payer;
-  if(newParts.length === 0){ toast('Escolhe pelo menos uma pessoa.', 'warn'); return; }
-  if(!newParts.includes(newPayer)){ toast('Escolhe quem pagou.', 'warn'); return; }
+  if(newParts.length === 0){ toast(t('editor.needOne'), 'warn'); return; }
+  if(!newParts.includes(newPayer)){ toast(t('editor.needPayer'), 'warn'); return; }
   editDraft = null;
 
   store.commit(current => {
@@ -511,8 +563,8 @@ function saveRoundEdit(){
     h.participants = newParts;
     return { next: current, result: 'ok' };
   }).then(result => {
-    if(result) toast('Ronda atualizada.');
-    else toast('Não dá para editar esta ronda — alguém que participou já foi removido.', 'warn');
+    if(result) toast(t('history.saved'));
+    else toast(t('history.editFail'), 'warn');
     renderHistory();
   }).catch(() => {});
 }
@@ -521,8 +573,8 @@ async function reverseRound(historyId){
   const entry = state.history.find(h => h.id === historyId);
   if(!entry) return;
   const ok = await askConfirm(
-    `Anular esta ronda (${entry.payer} pagou a ${entry.participants.length})? Os contadores voltam atrás.`,
-    'anular'
+    t('history.undoAsk', { payer: entry.payer, n: entry.participants.length }),
+    t('history.undoOk')
   );
   if(!ok) return;
 
@@ -545,8 +597,13 @@ async function reverseRound(historyId){
     current.history.splice(idx, 1);
     return { next: current, result: 'ok' };
   }).then(result => {
-    if(result) toast('Ronda anulada.');
-    else toast('Não dá para anular esta ronda — alguém que participou já foi removido.', 'warn');
+    if(result){
+      undoSnapshot = null;
+      hideResult();
+      toast(t('history.undone'));
+    } else {
+      toast(t('history.undoFail'), 'warn');
+    }
   }).catch(() => {});
 }
 
@@ -560,7 +617,9 @@ function renderSummary(){
   const people = state.people;
   const rondas = people.reduce((s, p) => s + p.pagamentos, 0);
   const cafes = people.reduce((s, p) => s + p.idas, 0);
-  const media = rondas === 0 ? '—' : (cafes / rondas).toFixed(1).replace('.', ',');
+  const media = rondas === 0
+    ? '—'
+    : (cafes / rondas).toFixed(1).replace('.', getLang() === 'pt' ? ',' : '.');
 
   const comIdas = people.filter(p => p.idas > 0);
   const maisEmDivida = comIdas.length
@@ -571,38 +630,122 @@ function renderSummary(){
     : null;
 
   const tiles = [
-    { label: 'rondas', value: rondas },
-    { label: 'cafés bebidos', value: cafes },
-    { label: 'média por ronda', value: media },
+    { icon: ICON.hash, label: t('stats.rounds'), value: rondas },
+    { icon: ICON.cup, label: t('stats.coffees'), value: cafes },
+    { icon: ICON.chart, label: t('stats.avg'), value: media },
     {
-      label: 'mais em dívida',
+      icon: ICON.down,
+      tone: 'debt',
+      label: t('stats.debt'),
       value: maisEmDivida && balanceOf(maisEmDivida) < 0 ? maisEmDivida.name : '—',
-      sub: maisEmDivida && balanceOf(maisEmDivida) < 0 ? saldoLabel(maisEmDivida) : 'ninguém'
+      sub: maisEmDivida && balanceOf(maisEmDivida) < 0 ? saldoLabel(maisEmDivida) : t('stats.nobody')
     },
     {
-      label: 'já pagou mais',
+      icon: ICON.trophy,
+      tone: 'ahead',
+      label: t('stats.top'),
       value: quemMaisPagou && quemMaisPagou.pago > 0 ? quemMaisPagou.name : '—',
-      sub: quemMaisPagou && quemMaisPagou.pago > 0 ? quemMaisPagou.pago + ' cafés' : 'ninguém'
+      sub: quemMaisPagou && quemMaisPagou.pago > 0 ? t('stats.ncoffees', { n: quemMaisPagou.pago }) : t('stats.nobody')
     }
   ];
 
-  ul.innerHTML = tiles.map(t => `
-    <li class="summary-tile">
-      <strong>${escapeHtml(String(t.value))}</strong>
-      <span class="summary-label">${escapeHtml(t.label)}</span>
-      ${t.sub ? `<span class="summary-sub">${escapeHtml(t.sub)}</span>` : ''}
+  ul.innerHTML = tiles.map(tile => `
+    <li class="summary-tile"${tile.tone ? ` data-tone="${tile.tone}"` : ''}>
+      <span class="tile-icon" aria-hidden="true"><svg width="15" height="15"><use href="#${tile.icon}"/></svg></span>
+      <strong>${escapeHtml(String(tile.value))}</strong>
+      <span class="summary-label">${escapeHtml(tile.label)}</span>
+      ${tile.sub ? `<span class="summary-sub">${escapeHtml(tile.sub)}</span>` : ''}
     </li>
   `).join('');
+}
+
+function renderPayerChart(){
+  const host = $('chartPayers');
+  const rows = state.people
+    .filter(p => p.pagamentos > 0)
+    .sort((a, b) => b.pagamentos - a.pagamentos || a.name.localeCompare(b.name));
+
+  if(rows.length === 0){
+    host.innerHTML = `<p class="chart-empty">${escapeHtml(t('chart.empty'))}</p>`;
+    return;
+  }
+
+  const max = Math.max(...rows.map(p => p.pagamentos));
+  host.innerHTML = rows.map(p => {
+    const tip = p.pagamentos === 1
+      ? t('chart.tipRound', { name: p.name })
+      : t('chart.tipRounds', { name: p.name, n: p.pagamentos });
+    const pct = Math.max(2, Math.round((p.pagamentos / max) * 100));
+    return `
+      <div class="bar-row" title="${escapeHtml(tip)}">
+        <span class="bar-name">${escapeHtml(p.name)}</span>
+        <span class="bar-plot">
+          <span class="bar-fill" style="width:${pct}%"></span>
+          <span class="bar-val" style="left:${pct}%">${p.pagamentos}</span>
+        </span>
+      </div>`;
+  }).join('');
+}
+
+function dayKey(date){
+  return date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
+}
+
+function renderDaysChart(){
+  const host = $('chartDays');
+  const counts = {};
+  state.history.forEach(h => {
+    const parts = String(h.date).split('/');
+    if(parts.length !== 3) return;
+    const when = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    if(Number.isNaN(when.getTime())) return;
+    const key = dayKey(when);
+    counts[key] = (counts[key] || 0) + 1;
+  });
+
+  const today = new Date();
+  const days = [];
+  for(let i = 7; i >= 0; i--){
+    const when = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    days.push({ when, n: counts[dayKey(when)] || 0 });
+  }
+
+  const max = Math.max(1, ...days.map(d => d.n));
+  const names = weekdays();
+  const monthNames = months();
+
+  host.innerHTML = `<div class="cols">${days.map(d => {
+    const label = d.when.getDate() + ' ' + (monthNames[d.when.getMonth()] || '');
+    const tip = d.n === 0
+      ? t('chart.tipDay0', { day: label })
+      : d.n === 1 ? t('chart.tipDay1', { day: label }) : t('chart.tipDay', { day: label, n: d.n });
+    const height = d.n === 0 ? 0 : Math.max(8, Math.round((d.n / max) * 100));
+    return `
+      <div class="col-item" title="${escapeHtml(tip)}">
+        <span class="col-val">${d.n > 0 ? d.n : ''}</span>
+        <span class="col-slot"><span class="col-fill" style="height:${height}%"></span></span>
+        <span class="col-day">${escapeHtml(names[d.when.getDay()] || '')}</span>
+      </div>`;
+  }).join('')}</div>`;
 }
 
 function updateDecideButton(){
   $('decideBtn').disabled = drawBusy || !store || state.selectedIds.length === 0 || state.people.length === 0;
 }
 
+function paintLuck(value){
+  const range = $('luckRange');
+  const min = Number(range.min) || 0;
+  const max = Number(range.max) || 100;
+  const pos = max === min ? 0 : (value - min) / (max - min);
+  range.parentElement.style.setProperty('--pos', (pos * 100).toFixed(1) + '%');
+  $('luckVal').textContent = value + '%';
+}
+
 function renderLuck(){
   const range = $('luckRange');
   if(document.activeElement !== range) range.value = state.luck;
-  $('luckVal').textContent = state.luck + '%';
+  paintLuck(state.luck);
 }
 
 function renderAll(){
@@ -612,13 +755,33 @@ function renderAll(){
   renderHistory();
   renderStats();
   renderSummary();
+  renderPayerChart();
+  renderDaysChart();
   renderLuck();
 }
 
 function setStatus(mode){
+  statusMode = mode;
   const badge = $('syncBadge');
   badge.dataset.mode = mode === 'volatile' ? 'error' : mode;
-  $('syncText').textContent = STATUS_TEXT[mode] || mode;
+  $('syncText').textContent = t('sync.' + mode);
+}
+
+function renderLang(){
+  $('langCode').textContent = t('top.langCode');
+  $('langFlag').setAttribute('href', '#' + t('top.langFlag'));
+  $('langBtn').setAttribute('aria-label', t('top.lang'));
+}
+
+function switchLang(){
+  setLang(otherLang());
+  applyStatic();
+  renderLang();
+  renderSoundToggle();
+  applyTheme();
+  setStatus(statusMode);
+  renderAll();
+  clickSound();
 }
 
 function applyState(next){
@@ -627,13 +790,15 @@ function applyState(next){
 
   const newest = state.history[0];
   const newestId = newest ? newest.id || null : null;
+  const isFresh = Boolean(newestId) && !knownHistoryIds.has(newestId);
 
-  if(initialized && newestId && newestId !== lastHistoryId && newestId !== selfDecisionId){
+  if(initialized && isFresh && newestId !== selfDecisionId){
     undoSnapshot = null;
     showResultCard(newest.payer);
     if(!stageOpen && !editDraft && !drawBusy) showRemoteReveal(newest);
   }
 
+  knownHistoryIds = new Set(state.history.map(h => h.id));
   lastHistoryId = newestId;
   initialized = true;
 }
@@ -647,14 +812,14 @@ function addPerson(rawName){
     return { next: current, result: 'ok' };
   }).then(result => {
     if(result) clickSound();
-    else toast('Já existe alguém com esse nome.', 'warn');
+    else toast(t('team.dupe'), 'warn');
   }).catch(() => {});
 }
 
 async function removePerson(id){
   const person = state.people.find(p => p.id === id);
   if(!person) return;
-  const ok = await askConfirm('Remover ' + person.name + ' da equipa? Os dados dessa pessoa perdem-se.', 'remover');
+  const ok = await askConfirm(t('team.removeAsk', { name: person.name }), t('team.removeOk'));
   if(!ok) return;
   store.commit(current => {
     current.people = current.people.filter(p => p.id !== id);
@@ -705,11 +870,11 @@ async function decidePayer(){
   let opening = Promise.resolve();
   if(mode === 'wheel'){
     buildWheel(localPool);
-    setHint('roleta carregada · ' + localPool.length + ' em jogo');
+    setHint(t('stage.wheelReady', { n: localPool.length }));
     clickSound();
   } else {
     prepareReel(localPool);
-    setHint('caixa selada · ' + localPool.length + ' lá dentro');
+    setHint(t('stage.sealed', { n: localPool.length }));
     opening = openCrate();
   }
 
@@ -743,7 +908,7 @@ async function decidePayer(){
     closeStage();
     hideResult();
     undoSnapshot = null;
-    toast('Não deu para registar o sorteio. Tenta outra vez.', 'warn');
+    toast(t('draw.fail'), 'warn');
     return;
   }
 
@@ -751,12 +916,12 @@ async function decidePayer(){
   const spinPool = localPool.some(p => p.name === winnerName) ? localPool : localPool.concat([winner]);
 
   if(mode === 'wheel'){
-    setHint('a rodar…');
+    setHint(t('stage.spinning'));
     await spinWheel(spinPool, winner);
   } else {
     await opening;
     if(token !== stageToken) return;
-    setHint('a sortear…');
+    setHint(t('stage.drawing'));
     await spinReel(spinPool, winner);
   }
   if(token !== stageToken) return;
@@ -767,7 +932,9 @@ async function decidePayer(){
   drawBusy = false;
   updateDecideButton();
   const chance = chances[winnerName];
-  const meta = (typeof chance === 'number' ? chance + '% de hipótese · ' : '') + selectedPeople.length + ' na mesa';
+  const meta = typeof chance === 'number'
+    ? t('reveal.meta', { pct: chance, n: selectedPeople.length })
+    : t('reveal.metaPlain', { n: selectedPeople.length });
   revealWinner(winnerName, meta);
   showResultCard(winnerName);
 }
@@ -792,9 +959,13 @@ function setAnimStyle(style){
 
 function renderAnimToggle(){
   const current = getAnimStyle();
-  document.querySelectorAll('.anim-opt').forEach(btn => {
+  const opts = [...document.querySelectorAll('.anim-opt')];
+  opts.forEach(btn => {
     btn.setAttribute('aria-pressed', String(btn.dataset.style === current));
   });
+  const index = Math.max(0, opts.findIndex(btn => btn.dataset.style === current));
+  const seg = document.querySelector('.seg');
+  if(seg) seg.style.setProperty('--seg-index', index);
 }
 
 function soundOn(){
@@ -810,7 +981,7 @@ function renderSoundToggle(){
   const on = soundOn();
   const btn = $('soundBtn');
   btn.setAttribute('aria-pressed', String(on));
-  btn.setAttribute('aria-label', on ? 'Desligar som' : 'Ligar som');
+  btn.setAttribute('aria-label', on ? t('stage.soundOn') : t('stage.soundOff'));
   $('soundOnIcon').classList.toggle('hidden', !on);
   $('soundOffIcon').classList.toggle('hidden', on);
 }
@@ -1148,12 +1319,16 @@ function cardWidth(){
   return Number.isFinite(raw) && raw > 0 ? raw : 116;
 }
 
+function fillerPick(parts){
+  return parts[Math.min(parts.length - 1, Math.floor(rand() * parts.length))];
+}
+
 function prepareReel(parts){
   const track = $('reelTrack');
   const weights = chanceWeights(parts, state.luck);
   const tiers = tierMap(parts, weights);
   const cards = [];
-  for(let i = 0; i < 14; i++) cards.push(reelCardHtml(parts[pickIndex(weights)], false, tiers));
+  for(let i = 0; i < 14; i++) cards.push(reelCardHtml(fillerPick(parts), false, tiers));
   track.style.transition = 'none';
   track.style.transform = 'translate3d(0,0,0)';
   track.classList.remove('blurring');
@@ -1164,21 +1339,21 @@ async function openCrate(){
   const scene = $('crateScene');
   const tag = scene.querySelector('.crate-tag');
   scene.dataset.phase = 'closed';
-  tag.textContent = 'selada';
+  tag.textContent = t('crate.sealed');
   if(reduceMotion()){
     scene.dataset.phase = 'open';
-    tag.textContent = 'aberta';
+    tag.textContent = t('crate.open');
     await wait(40);
     return;
   }
 
   await wait(240);
   scene.dataset.phase = 'charge';
-  setHint('a caixa aquece…');
+  setHint(t('stage.warm'));
   creakSound();
   await wait(620);
 
-  setHint('alguma coisa mexe lá dentro…');
+  setHint(t('stage.moving'));
   scene.dataset.phase = 'shake';
   knockSound();
   buzz(18);
@@ -1187,15 +1362,15 @@ async function openCrate(){
   buzz(26);
   await wait(440);
 
-  setHint('não aguenta mais…');
+  setHint(t('stage.strain'));
   $('stageHint').classList.add('hot');
   $('stage').classList.add('is-hot');
   scene.dataset.phase = 'strain';
-  tag.textContent = 'a ceder';
+  tag.textContent = t('crate.giving');
   creakSound();
   await wait(760);
 
-  setHint('a abrir…');
+  setHint(t('stage.opening'));
   scene.dataset.phase = 'burst';
   whooshSound();
   impactSound();
@@ -1204,7 +1379,7 @@ async function openCrate(){
   await wait(320);
 
   scene.dataset.phase = 'open';
-  tag.textContent = 'aberta';
+  tag.textContent = t('crate.open');
   await wait(620);
 }
 
@@ -1223,7 +1398,7 @@ async function spinReel(parts, winner){
   for(let i = 0; i < total; i++){
     cards.push(i === winIndex
       ? reelCardHtml(winner, true, tiers)
-      : reelCardHtml(parts[pickIndex(weights)], false, tiers));
+      : reelCardHtml(fillerPick(parts), false, tiers));
   }
   track.innerHTML = cards.join('');
 
@@ -1384,7 +1559,7 @@ function revealWinner(name, meta){
 
 function showRemoteReveal(entry){
   openStage('reveal');
-  revealWinner(entry.payer, 'decidido noutro dispositivo · ' + entry.participants.length + ' na mesa');
+  revealWinner(entry.payer, t('reveal.remote', { n: entry.participants.length }));
 }
 
 function burstConfetti(){
@@ -1425,7 +1600,7 @@ function undoLast(){
   downSound();
   closeStage();
   hideResult();
-  toast('Sorteio desfeito.');
+  toast(t('undo.done'));
 }
 
 function showResultCard(payerName){
@@ -1462,7 +1637,7 @@ function bindEvents(){
   $('undoBtn').addEventListener('click', undoLast);
   $('luckRange').addEventListener('input', () => {
     state.luck = Number($('luckRange').value);
-    $('luckVal').textContent = state.luck + '%';
+    paintLuck(state.luck);
     renderSelectionList();
   });
   $('luckRange').addEventListener('change', () => {
@@ -1480,6 +1655,7 @@ function bindEvents(){
     toggleTheme();
     clickSound();
   });
+  $('langBtn').addEventListener('click', switchLang);
   $('modalOk').addEventListener('click', () => closeModal(true));
   $('modalCancel').addEventListener('click', () => closeModal(false));
   $('modalVeil').addEventListener('click', () => closeModal(false));
@@ -1501,8 +1677,11 @@ function bindEvents(){
 }
 
 async function main(){
+  setLang(getLang());
+  applyStatic();
   applyTheme();
   bindEvents();
+  renderLang();
   renderAnimToggle();
   renderSoundToggle();
   await requireUnlock();

@@ -3,23 +3,99 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<meta name="description" content="Quem calha pagar a próxima rodada — justo pelo tamanho da conta.">
+<meta name="description" content="Quem calha pagar a próxima ronda — justo pelo tamanho da conta.">
 <meta name="theme-color" content="#4a3323">
 <meta name="color-scheme" content="light dark">
 <title>Quem Paga o Café</title>
 <meta property="og:title" content="Quem Paga o Café">
-<meta property="og:description" content="Quem calha pagar a próxima rodada — justo pelo tamanho da conta.">
+<meta property="og:description" content="Quem calha pagar a próxima ronda — justo pelo tamanho da conta.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
-<link rel="manifest" href="manifest.webmanifest?v=12">
+<link rel="manifest" href="manifest.webmanifest?v=13">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a3323' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 8h1a4 4 0 0 1 0 8h-1'/%3E%3Cpath d='M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z'/%3E%3Cline x1='6' y1='1' x2='6' y2='4'/%3E%3Cline x1='10' y1='1' x2='10' y2='4'/%3E%3Cline x1='14' y1='1' x2='14' y2='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=12">
+<link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
+
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-cup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+    <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+  </symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="6" width="20" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/>
+    <path d="M5.6 12h.01M18.4 12h.01"/>
+  </symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+  </symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6h6zM19 7l3 6h-6z"/>
+  </symbol>
+  <symbol id="i-dice" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.1" fill="currentColor"/>
+    <circle cx="15.5" cy="15.5" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/>
+  </symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>
+  </symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/>
+  </symbol>
+  <symbol id="i-balance" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
+  </symbol>
+  <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="6" width="20" height="12" rx="2"/><path d="M8 6v12M16 6v12"/>
+  </symbol>
+  <symbol id="i-wheel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/>
+  </symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+  </symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+  </symbol>
+  <symbol id="i-revert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 7v6h6"/><path d="M3.5 13a9 9 0 1 0 2.6-8.4L3 7"/>
+  </symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>
+    <path d="M12 14v3M8.5 21h7l-.7-3h-5.6z"/>
+  </symbol>
+  <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 4v14"/><path d="M6 12l6 6 6-6"/>
+  </symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 9h14M5 15h14M10 3L8 21M16 3l-2 18"/>
+  </symbol>
+  <symbol id="i-graph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 3v18h18"/><path d="M7 15l4-5 3.5 3L21 6"/>
+  </symbol>
+  <symbol id="i-flag-pt" viewBox="0 0 24 16">
+    <rect width="24" height="16" fill="#c8102e"/>
+    <rect width="9.6" height="16" fill="#046a38"/>
+    <circle cx="9.6" cy="8" r="3.6" fill="#ffe000" stroke="#fff" stroke-width="1"/>
+    <circle cx="9.6" cy="8" r="1.7" fill="#c8102e"/>
+  </symbol>
+  <symbol id="i-flag-en" viewBox="0 0 24 16">
+    <rect width="24" height="16" fill="#012169"/>
+    <path d="M0 0l24 16M24 0L0 16" stroke="#fff" stroke-width="3.4"/>
+    <path d="M0 0l24 16M24 0L0 16" stroke="#c8102e" stroke-width="1.8"/>
+    <path d="M12 0v16M0 8h24" stroke="#fff" stroke-width="5.4"/>
+    <path d="M12 0v16M0 8h24" stroke="#c8102e" stroke-width="3.2"/>
+  </symbol>
+</svg>
 
 <div class="gate hidden" id="gate">
   <div class="gate-card">
@@ -28,19 +104,19 @@
         <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
       </svg>
     </div>
-    <h1>Quem Paga o Café</h1>
-    <p>página da malta. mete a palavra-passe para entrar.</p>
+    <h1 data-i18n="app.name">Quem Paga o Café</h1>
+    <p data-i18n="gate.sub">página da malta. mete a palavra-passe para entrar.</p>
     <form class="gate-form" id="gateForm">
-      <label class="sr-only" for="gatePassword">Palavra-passe</label>
+      <label class="sr-only" for="gatePassword" data-i18n="gate.password">Palavra-passe</label>
       <div class="gate-input">
-        <input id="gatePassword" type="password" placeholder="palavra-passe" autocomplete="current-password">
-        <button type="button" class="gate-eye" id="gateReveal" aria-label="Mostrar palavra-passe" aria-pressed="false">
+        <input id="gatePassword" type="password" data-i18n-ph="gate.password" placeholder="palavra-passe" autocomplete="current-password">
+        <button type="button" class="gate-eye" id="gateReveal" data-i18n-label="gate.show" aria-label="Mostrar palavra-passe" aria-pressed="false">
           <svg id="eyeShow" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
           <svg id="eyeHide" class="hidden" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.4 10.4 0 0 1 12 19c-7 0-11-7-11-7a19 19 0 0 1 5.1-5.9"/><path d="M9.9 4.2A9.1 9.1 0 0 1 12 4c7 0 11 7 11 7a19 19 0 0 1-2.2 3.2"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
         </button>
       </div>
       <p class="gate-error" id="gateError" role="alert"></p>
-      <button type="submit" class="btn-decide">Entrar</button>
+      <button type="submit" class="btn-decide" data-i18n="gate.enter">Entrar</button>
     </form>
   </div>
 </div>
@@ -50,30 +126,39 @@
   <header class="topbar">
     <div class="brand">
       <div class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
-          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-          <line x1="6" y1="1" x2="6" y2="4"/>
-          <line x1="10" y1="1" x2="10" y2="4"/>
-          <line x1="14" y1="1" x2="14" y2="4"/>
-        </svg>
+        <svg width="24" height="24"><use href="#i-cup"/></svg>
       </div>
       <div class="brand-text">
-        <h1>Quem Paga o Café</h1>
-        <p>quem calha pagar a próxima rodada</p>
+        <h1 data-i18n="app.name">Quem Paga o Café</h1>
+        <p data-i18n="app.tagline">quem calha pagar a próxima ronda</p>
       </div>
     </div>
+
     <div class="topbar-stats">
       <span class="sync-badge" id="syncBadge" data-mode="local">
         <span class="sync-dot" aria-hidden="true"></span>
-        <span id="syncText">a ligar…</span>
+        <span id="syncText">…</span>
       </span>
-      <button type="button" class="theme-btn" id="themeBtn" aria-label="Mudar tema">
-        <svg class="theme-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.2 4.2l1.5 1.5M18.3 18.3l1.5 1.5M2 12h2M20 12h2M4.2 19.8l1.5-1.5M18.3 5.7l1.5-1.5"/></svg>
-        <svg class="theme-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>
-      </button>
-      <div class="stat-chip"><strong id="statTeamCount">0</strong><span>na equipa</span></div>
-      <div class="stat-chip"><strong id="statTodayCount">0</strong><span>hoje</span></div>
+      <div class="icon-cluster">
+        <button type="button" class="ghost-btn lang-btn" id="langBtn" data-i18n-label="top.lang" aria-label="Switch to English">
+          <svg class="flag" width="19" height="13" viewBox="0 0 24 16" aria-hidden="true"><use id="langFlag" href="#i-flag-en"/></svg>
+          <span id="langCode">EN</span>
+        </button>
+        <button type="button" class="ghost-btn" id="themeBtn" aria-label="Tema">
+          <svg class="theme-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.2 4.2l1.5 1.5M18.3 18.3l1.5 1.5M2 12h2M20 12h2M4.2 19.8l1.5-1.5M18.3 5.7l1.5-1.5"/></svg>
+          <svg class="theme-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>
+        </button>
+      </div>
+      <div class="stat-chip">
+        <svg class="stat-ico" width="14" height="14" aria-hidden="true"><use href="#i-users"/></svg>
+        <strong id="statTeamCount">0</strong>
+        <span data-i18n="top.team">na equipa</span>
+      </div>
+      <div class="stat-chip">
+        <svg class="stat-ico" width="14" height="14" aria-hidden="true"><use href="#i-cup"/></svg>
+        <strong id="statTodayCount">0</strong>
+        <span data-i18n="top.today">hoje</span>
+      </div>
     </div>
   </header>
 
@@ -81,14 +166,16 @@
 
     <section class="card card-team" aria-labelledby="teamHeading">
       <div class="card-head">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <h2 id="teamHeading">Equipa</h2>
+        <span class="head-icon" aria-hidden="true"><svg width="16" height="16"><use href="#i-users"/></svg></span>
+        <h2 id="teamHeading" data-i18n="card.team">Equipa</h2>
       </div>
 
       <div class="add-row">
-        <label class="sr-only" for="nameInput">Nome da nova pessoa</label>
-        <input id="nameInput" type="text" placeholder="nome da pessoa" autocomplete="off" maxlength="30">
-        <button type="button" id="addBtn" class="btn-icon" aria-label="Adicionar pessoa">+</button>
+        <label class="sr-only" for="nameInput" data-i18n="team.add">Nome da nova pessoa</label>
+        <input id="nameInput" type="text" data-i18n-ph="team.add" placeholder="nome da pessoa" autocomplete="off" maxlength="30">
+        <button type="button" id="addBtn" class="btn-icon" data-i18n-label="team.addBtn" aria-label="Adicionar pessoa">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
       </div>
 
       <ul id="peopleList" class="list"></ul>
@@ -96,46 +183,58 @@
 
     <section class="card card-today" aria-labelledby="todayHeading">
       <div class="card-head">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        <h2 id="todayHeading">Quem está hoje</h2>
+        <span class="head-icon" aria-hidden="true"><svg width="16" height="16"><use href="#i-check"/></svg></span>
+        <h2 id="todayHeading" data-i18n="card.today">Quem está hoje</h2>
         <div class="card-head-actions">
-          <button id="selAllBtn" class="chip-btn" type="button">todos</button>
-          <button id="selNoneBtn" class="chip-btn" type="button">limpar</button>
+          <button id="selAllBtn" class="chip-btn" type="button" data-i18n="today.all">todos</button>
+          <button id="selNoneBtn" class="chip-btn" type="button" data-i18n="today.none">limpar</button>
         </div>
       </div>
 
       <ul id="selectionList" class="list"></ul>
 
-      <div class="luck-row">
-        <label for="luckRange">sorte <span id="luckVal">20%</span></label>
-        <input type="range" id="luckRange" min="10" max="30" step="5" value="20">
-      </div>
-      <p class="luck-caption">10% = mais justo · 30% = mais sorte</p>
+      <div class="controls">
+        <div class="luck-row">
+          <span class="luck-end" aria-hidden="true"><svg width="15" height="15"><use href="#i-scale"/></svg></span>
+          <label class="sr-only" for="luckRange" data-i18n="luck.label">sorte</label>
+          <div class="luck-track">
+            <input type="range" id="luckRange" min="10" max="30" step="5" value="20">
+            <output class="luck-bubble" id="luckVal" for="luckRange">20%</output>
+          </div>
+          <span class="luck-end" aria-hidden="true"><svg width="15" height="15"><use href="#i-dice"/></svg></span>
+        </div>
 
-      <div class="anim-toggle" role="group" aria-label="Tipo de animação">
-        <button type="button" class="anim-opt" data-style="reel" aria-pressed="true">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M8 6v12M16 6v12"/></svg>
-          caixa
-        </button>
-        <button type="button" class="anim-opt" data-style="wheel" aria-pressed="false">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg>
-          roleta
+        <div class="seg" role="group" data-i18n-label="anim.group" aria-label="Tipo de animação">
+          <span class="seg-thumb" aria-hidden="true"></span>
+          <button type="button" class="anim-opt" data-style="reel" aria-pressed="true">
+            <svg width="15" height="15" aria-hidden="true"><use href="#i-box"/></svg>
+            <span data-i18n="anim.box">caixa</span>
+          </button>
+          <button type="button" class="anim-opt" data-style="wheel" aria-pressed="false">
+            <svg width="15" height="15" aria-hidden="true"><use href="#i-wheel"/></svg>
+            <span data-i18n="anim.wheel">roleta</span>
+          </button>
+        </div>
+
+        <button id="decideBtn" class="btn-decide" disabled>
+          <svg width="17" height="17" aria-hidden="true"><use href="#i-cup"/></svg>
+          <span data-i18n="decide">Sortear quem paga</span>
         </button>
       </div>
-
-      <button id="decideBtn" class="btn-decide" disabled>Bora, quem paga?</button>
 
       <div id="resultWrap" class="result-wrap hidden">
         <div id="resultCard" class="result-card hidden">
           <div class="avatar avatar-lg" id="winnerAvatar"></div>
           <div class="result-info">
-            <div class="result-label">hoje paga</div>
+            <div class="result-label" data-i18n="result.today">hoje paga</div>
             <div class="result-name" id="winnerName"></div>
-            <div class="result-badge">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              decidido
+            <div class="result-foot">
+              <span class="result-badge">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span data-i18n="result.done">decidido</span>
+              </span>
+              <button id="undoBtn" class="link-btn" type="button" data-i18n="undo">desfazer</button>
             </div>
-            <div><button id="undoBtn" class="link-btn" type="button">desfazer</button></div>
           </div>
         </div>
       </div>
@@ -143,34 +242,54 @@
 
     <section class="card card-fair" aria-labelledby="fairHeading">
       <div class="card-head">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-        <h2 id="fairHeading">Quem paga a seguir</h2>
+        <span class="head-icon" aria-hidden="true"><svg width="16" height="16"><use href="#i-balance"/></svg></span>
+        <h2 id="fairHeading" data-i18n="card.fair">Quem paga a seguir</h2>
+        <div class="card-head-actions">
+          <span class="head-note" data-i18n="fair.caption">saldo = cafés que pagou − cafés que bebeu</span>
+        </div>
       </div>
-      <p class="card-caption">saldo = cafés que já pagou menos os que já bebeu. quem está mais em baixo (mais negativo) é o próximo a pagar.</p>
-      <details class="fair-help">
-        <summary>como é calculada a hipótese de cada um</summary>
-        <p><b>quem pagou a última ronda fica de fora da seguinte</b> — nunca se paga duas vezes seguidas. bebe na mesma, só não entra no sorteio. só volta a entrar se for o único presente.</p>
-        <p>entre os restantes: quem tem o saldo mais alto serve de topo, e o peso de cada um é <b>(saldo do topo − saldo dele) + 1</b>, ou seja quanto mais a dever, mais peso. depois mistura-se esse peso com um sorteio às cegas na medida da barra da <b>sorte</b>: a 20%, 80% da decisão vem do saldo e 20% é puro acaso.</p>
-        <p>por isso ninguém fica com 0% nem com 100%: quem já pagou muito continua a poder calhar, só que raramente. o sorteio é feito uma vez, com estes pesos, e só depois a animação é montada para acabar nesse nome.</p>
-        <p>anular uma ronda apaga-a mesmo: o sorteio seguinte é uma aposta nova, e quem fica de fora passa a ser quem pagou a ronda que sobrou no topo do histórico.</p>
-      </details>
+
       <ul id="fairnessList" class="list"></ul>
+
+      <details class="fair-help">
+        <summary data-i18n="fair.help">como funciona</summary>
+        <p data-i18n-html="fair.help1"></p>
+        <p data-i18n-html="fair.help2"></p>
+        <p data-i18n-html="fair.help3"></p>
+      </details>
     </section>
 
     <section class="card card-history" aria-labelledby="historyHeading">
       <div class="card-head">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
-        <h2 id="historyHeading">Histórico</h2>
+        <span class="head-icon" aria-hidden="true"><svg width="16" height="16"><use href="#i-clock"/></svg></span>
+        <h2 id="historyHeading" data-i18n="card.history">Histórico</h2>
       </div>
       <ul id="historyList" class="list"></ul>
     </section>
 
     <section class="card card-stats" aria-labelledby="statsHeading">
       <div class="card-head">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/></svg>
-        <h2 id="statsHeading">Números</h2>
+        <span class="head-icon" aria-hidden="true"><svg width="16" height="16"><use href="#i-chart"/></svg></span>
+        <h2 id="statsHeading" data-i18n="card.stats">Números</h2>
       </div>
       <ul id="summaryList" class="summary-grid"></ul>
+    </section>
+
+    <section class="card card-charts" aria-labelledby="chartsHeading">
+      <div class="card-head">
+        <span class="head-icon" aria-hidden="true"><svg width="16" height="16"><use href="#i-graph"/></svg></span>
+        <h2 id="chartsHeading" data-i18n="card.charts">Gráficos</h2>
+      </div>
+      <div class="chart-grid">
+        <figure class="chart">
+          <figcaption class="chart-title" data-i18n="chart.payers">rondas que cada um pagou</figcaption>
+          <div class="chart-body" id="chartPayers"></div>
+        </figure>
+        <figure class="chart">
+          <figcaption class="chart-title" data-i18n="chart.days">rondas nos últimos 8 dias</figcaption>
+          <div class="chart-body" id="chartDays"></div>
+        </figure>
+      </div>
     </section>
 
   </main>
@@ -186,13 +305,13 @@
   <div class="stage-panel">
 
     <div class="stage-top">
-      <p class="stage-eyebrow" id="stageTitle">quem paga o café</p>
+      <p class="stage-eyebrow" id="stageTitle" data-i18n="stage.eyebrow">quem paga o café</p>
       <div class="stage-top-actions">
-        <button type="button" class="stage-icon" id="soundBtn" aria-pressed="true" aria-label="Desligar som">
+        <button type="button" class="stage-icon" id="soundBtn" aria-pressed="true" data-i18n-label="stage.soundOn" aria-label="Desligar som">
           <svg id="soundOnIcon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
           <svg id="soundOffIcon" class="hidden" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/></svg>
         </button>
-        <button type="button" class="stage-icon" id="stageClose" aria-label="Fechar">
+        <button type="button" class="stage-icon" id="stageClose" data-i18n-label="stage.close" aria-label="Fechar">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
         </button>
       </div>
@@ -209,7 +328,7 @@
             <div class="crate-inner"></div>
             <div class="crate-glow" aria-hidden="true"></div>
             <div class="crate-face">
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+              <svg width="24" height="24" aria-hidden="true"><use href="#i-cup"/></svg>
               <span class="crate-tag">selada</span>
             </div>
           </div>
@@ -256,7 +375,7 @@
         <div class="reveal-halo" aria-hidden="true"></div>
         <div class="reveal-ring" aria-hidden="true"></div>
         <div class="avatar reveal-avatar" id="revealAvatar"></div>
-        <p class="reveal-kicker">hoje paga</p>
+        <p class="reveal-kicker" data-i18n="result.today">hoje paga</p>
         <h2 class="reveal-name" id="revealName"></h2>
         <p class="reveal-meta" id="revealMeta"></p>
       </div>
@@ -266,8 +385,8 @@
     <p class="stage-hint" id="stageHint" aria-live="polite"></p>
 
     <div class="stage-buttons hidden" id="stageButtons">
-      <button type="button" class="stage-btn ghost hidden" id="stageUndo">desfazer</button>
-      <button type="button" class="stage-btn" id="stageDone">boa</button>
+      <button type="button" class="stage-btn ghost hidden" id="stageUndo" data-i18n="undo">desfazer</button>
+      <button type="button" class="stage-btn" id="stageDone" data-i18n="stage.done">boa</button>
     </div>
 
   </div>
@@ -280,15 +399,15 @@
   <div class="modal-card">
     <p class="modal-text" id="modalText"></p>
     <div class="modal-actions">
-      <button type="button" class="modal-btn ghost" id="modalCancel">cancelar</button>
-      <button type="button" class="modal-btn" id="modalOk">confirmar</button>
+      <button type="button" class="modal-btn ghost" id="modalCancel" data-i18n="modal.cancel">cancelar</button>
+      <button type="button" class="modal-btn" id="modalOk" data-i18n="modal.confirm">confirmar</button>
     </div>
   </div>
 </div>
 
 <div class="toast-host" id="toastHost" aria-live="polite"></div>
 
-<script type="module" src="app.js?v=12"></script>
+<script type="module" src="app.js?v=13"></script>
 
 </body>
 </html>

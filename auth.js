@@ -1,4 +1,5 @@
-import { SHARED_PASSWORD_HASH } from './config.js?v=12';
+import { SHARED_PASSWORD_HASH } from './config.js?v=13';
+import { t } from './i18n.js?v=13';
 
 const UNLOCK_KEY = 'cafeUnlock_v1';
 
@@ -25,7 +26,7 @@ function bindReveal(input){
     const revealed = input.type === 'text';
     input.type = revealed ? 'password' : 'text';
     btn.setAttribute('aria-pressed', String(!revealed));
-    btn.setAttribute('aria-label', revealed ? 'Mostrar palavra-passe' : 'Esconder palavra-passe');
+    btn.setAttribute('aria-label', revealed ? t('gate.show') : t('gate.hide'));
     iconShow.classList.toggle('hidden', !revealed);
     iconHide.classList.toggle('hidden', revealed);
     input.focus();
@@ -54,13 +55,13 @@ export function requireUnlock(){
       error.textContent = '';
 
       if(!crypto.subtle){
-        error.textContent = 'abre a pagina em https ou localhost';
+        error.textContent = t('gate.https');
         return;
       }
 
       const hash = await sha256(input.value);
       if(hash !== SHARED_PASSWORD_HASH){
-        error.textContent = 'palavra-passe errada';
+        error.textContent = t('gate.wrong');
         const card = gate.querySelector('.gate-card');
         card.classList.remove('shake');
         void card.offsetWidth;

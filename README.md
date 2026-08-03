@@ -4,7 +4,7 @@ Decide quem paga o café da equipa de forma justa, tendo em conta o **tamanho da
 só quantas vezes cada um pagou.
 
 Cada pessoa tem um **saldo = cafés que pagou − cafés que bebeu**. Quando alguém paga uma
-rodada, ganha crédito igual ao número de presentes (pagar por 8 vale +8, não +1). Quem tem o
+ronda, ganha crédito igual ao número de presentes (pagar por 8 vale +8, não +1). Quem tem o
 saldo mais baixo entre os presentes é o **mais provável** a pagar a seguir — não o escolhido à
 força. O quadro "quem paga a seguir" ordena por saldo; empate desempata por quem menos pagou.
 
@@ -12,8 +12,9 @@ Site estático, corre em GitHub Pages, sem servidor próprio.
 
 Dá para: adicionar/remover pessoas, **mudar nomes** (reescreve o histórico), escolher quem
 está presente, sortear, **desfazer a última** ou **anular qualquer ronda** do histórico, e ver
-os **números** no fundo. Tem **tema claro e escuro** (segue o sistema; o botão na barra de topo
-força um deles, guardado em `cafeTheme_v1`). É instalável no telemóvel (menu do browser →
+os **números** e os **gráficos** no fundo (rondas que cada um pagou, rondas nos últimos 8 dias). Tem **tema claro e escuro** (segue o sistema; o botão na barra de topo
+força um deles, guardado em `cafeTheme_v1`) e **português/inglês** (segue o browser; o botão da bandeira
+troca e fica guardado em `cafeLang_v1`). É instalável no telemóvel (menu do browser →
 adicionar ao ecrã inicial).
 
 ---
@@ -167,6 +168,7 @@ entrado é obrigado a introduzir a nova.
 | [store.js](store.js) | Camada de dados: Firestore ou `localStorage` |
 | [auth.js](auth.js) | Ecrã de entrada |
 | [app.js](app.js) | Regras do sorteio, palco da animação e desenho dos painéis |
+| [i18n.js](i18n.js) | Textos em pt-PT e inglês |
 
 O sorteio abre em ecrã inteiro. Há dois modos, escolhidos no cartão "quem está hoje" e
 guardados no browser (`cafeAnim_v1`):
